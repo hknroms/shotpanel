@@ -31,11 +31,14 @@ input[type=text]{min-width:0;flex:1}
 .sbtn:disabled{opacity:.4;cursor:default}
 
 /* ヘッダー */
-.status{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.status{display:flex;flex-wrap:nowrap;gap:8px 10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;height:40px;overflow:hidden}
+.status>*{flex:none;white-space:nowrap}
+.status .gt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.keysent{display:inline-block;width:150px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;font-family:var(--mono);margin-left:4px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
 .dot.on{background:var(--p2);box-shadow:0 0 8px var(--p2)}
 .rom{font-family:var(--mono);color:var(--accent)}
-.pill{font-size:11px;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:1px 8px;white-space:nowrap;margin-left:auto}
+.pill{font-size:11px;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:1px 8px;white-space:nowrap;margin-left:auto;max-width:60%;overflow:hidden;text-overflow:ellipsis}
 .pill.on{border-color:var(--p2);color:var(--p2)}
 .pill.warn{border-color:var(--warn);color:var(--warn)}
 .editbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -398,10 +401,10 @@ function renderStatus(){
   let pill;
   if(paused)pill=`<span class="pill warn">一時停止中</span>`;
   else if(game.rom&&curGameIsDirect())pill=`<span class="pill">このゲームはMAMEが直接読む設定</span>`;
-  else if(active)pill=`<span class="pill on">MAMEに送信中${sentKeys.length?"："+esc(sentKeys.join(" ")):""}</span>`;
+  else if(active)pill=`<span class="pill on" title="${esc(sentKeys.join(" "))}">MAMEに送信中<span class="keysent">${sentKeys.length?esc(sentKeys.join(" ")):"—"}</span></span>`;
   else pill=`<span class="pill">${cfg.options.onlyWhenFront?"MAMEが前面にないので待機中":"待機中"}</span>`;
-  st.innerHTML=game.rom?`<span class="dot on"></span><span>起動中</span><span class="rom">${esc(game.rom)}</span><span>${esc(game.title)}</span>${pill}`
-    :`<span class="dot"></span><span>MAMEのゲームは起動していません</span>${pill}`;
+  st.innerHTML=game.rom?`<span class="dot on"></span><span>起動中</span><span class="rom">${esc(game.rom)}</span><span class="gt" title="${esc(game.title)}">${esc(game.title)}</span>${pill}`
+    :`<span class="dot"></span><span class="gt">MAMEのゲームは起動していません</span>${pill}`;
 }
 function curGameIsDirect(){const g=cfg.games[game.rom];return !!(g&&g.direct)}
 

@@ -1,6 +1,29 @@
 {
  "versions": [
   {
+   "version": "0.10.0",
+   "date": "2026-10-30",
+   "title": "MAMEUI専用にした／MAMEUIが読む mame.ini を書き換えるように直した",
+   "changes": [
+    "MAMEUI専用にした",
+    "MAMEUIが実際に読む設定ファイル（mameui.exe と同じフォルダの mame.ini）を書き換えるように直した。これまでは別のファイルを見て、済んだと勘違いしていたため、キーがMAMEUIに届いていなかった",
+    "mame.ini が無いときは作る。ini フォルダの mame.ini（控え）と、種類別・ゲーム別の ini で keyboardprovider を決めているものも合わせて書き換える",
+    "選んだフォルダに mameui.exe が無いときは、MAMEUIのフォルダではないと知らせるようにした",
+    "画面の上の「MAMEに送信中」の表示が2段になって、画面全体が揺れることがあったのを直した"
+   ],
+   "file": "files/ShotPanel_v0.10.0.zip",
+   "en": {
+    "title": "MAMEUI only / now edits the mame.ini MAMEUI actually reads",
+    "changes": [
+     "ShotPanel now targets MAMEUI only",
+     "Now edits the settings file MAMEUI actually reads (mame.ini next to mameui.exe). Before, it looked at a different file and wrongly reported the set-up as done, so keys never reached MAMEUI",
+     "Creates mame.ini if missing, and also updates ini\\mame.ini (the backup copy) and any per-type or per-game ini that sets keyboardprovider",
+     "Warns when the chosen folder has no mameui.exe",
+     "Fixed the \"sending to MAME\" status wrapping onto two lines and making the whole window jump"
+    ]
+   }
+  },
+  {
    "version": "0.9.4",
    "date": "2026-10-30",
    "title": "MAMEUIが開いている間は書き換えないようにした",

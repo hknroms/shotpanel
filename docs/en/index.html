@@ -82,7 +82,7 @@ ol{margin:6px 0;padding-left:22px}
 <main id="site-content">
 <div class="lang"><a href="../">日本語</a> ｜ <b>English</b></div>
 <h1>ShotPanel</h1>
-<div class="sub">Turbo fire and button mapping for pads and arcade sticks, made for MAME (Windows 10/11). It reads your controller, applies turbo and button swaps, and sends the result to MAME as keyboard input. No installation needed. The app's screens are in Japanese.</div>
+<div class="sub">Turbo fire and button mapping for pads and arcade sticks, made for MAMEUI (Windows 10/11). It reads your controller, applies turbo and button swaps, and sends the result to MAMEUI as keyboard input. <b>MAMEUI (mameui.exe) only.</b> No installation needed. The app's screens are in Japanese.</div>
 
 <a class="bigl" id="dl-latest" href="#" style="margin-top:22px"><b>▶ Download the latest version</b><span id="dl-latest-sub">Loading…</span></a>
 
@@ -91,7 +91,7 @@ ol{margin:6px 0;padding-left:22px}
 <h3 style="margin:0 0 6px;font-size:15px">Getting started</h3>
 <ol>
 <li>Unzip, put the folder anywhere you like and run <b>ShotPanel.exe</b>. The first time, Windows may show "Windows protected your PC"; choose "More info" → "Run anyway". Settings are saved automatically to <code>shotpanel.json</code> in the same folder.</li>
-<li>Follow <b>はじめにやること</b> (Getting started) at the top of the window. Choose your MAME folder (where mame.exe is) with the browse button, close MAME, then press the set-up button. It edits mame.ini and MAME's input assignments (<code>cfg\default.cfg</code>: buttons and lever keyboard-only). MAME still sees the controller, so games with analog controls keep working. The original files are kept and can be restored.</li>
+<li>Follow <b>はじめにやること</b> (Getting started) at the top of the window. Choose your MAMEUI folder (where mameui.exe is) with the browse button, close MAMEUI completely, then press the set-up button. It edits mame.ini next to mameui.exe (creating it if needed) and MAMEUI's input assignments (<code>cfg\default.cfg</code>: buttons and lever keyboard-only). MAME still sees the controller, so games with analog controls keep working. The original files are kept and can be restored.</li>
 <li>To change keys, use <b>キーボードの設定</b> (Keyboard settings) and press the write button.</li>
 <li>Connected controllers appear automatically. Set each one to 1P, 2P or Off. If the buttons on screen are not where the real ones are, register their positions by pressing them.</li>
 <li>Pick a layout pattern such as 2B-1. Click a button on screen to change just that button.</li>
@@ -109,7 +109,7 @@ ol{margin:6px 0;padding-left:22px}
 <ul>
 <li>Windows 10/11 (64-bit) and the Microsoft Edge WebView2 Runtime (included with Windows 11 and updated Windows 10).</li>
 <li>Features handled inside a stick, such as its own turbo switch, cannot be read. Analog values (how far a stick is pushed) are not sent; sticks work only as up/down/left/right.</li>
-<li>When only the MAMEUI front end is open, ShotPanel cannot tell that MAME is running. Close MAMEUI too before changing mame.ini or default.cfg.</li>
+<li>MAMEUI writes its settings back when it closes, so ShotPanel will not change them while MAMEUI is open. Avoid assigning inputs by hand or using "reset to default" in MAMEUI's input settings; they get out of step with ShotPanel.</li>
 <li>Turbo is not perfectly synced to MAME's frames. If a game misses shots at 30 per second, lower it to 20 or 15.</li>
 </ul>
 </div>
