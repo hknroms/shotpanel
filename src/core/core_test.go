@@ -143,7 +143,7 @@ func TestIni(t *testing.T) {
 func TestTitle(t *testing.T) {
 	cases := []struct {
 		in, rom, desc string
-		exe            bool
+		exe           bool
 	}{
 		{"MAME: Raiden [raiden]", "raiden", "Raiden", false},
 		{"MAMEUI: The King of Fighters '98 - The Slugfest [kof98]", "kof98", "The King of Fighters '98 - The Slugfest", false},
@@ -297,5 +297,26 @@ func TestListXML(t *testing.T) {
 	g, ok = ParseListXML(older)
 	if !ok || g.Buttons != 6 || g.Types[0] != "joy8way" {
 		t.Fatal(g)
+	}
+}
+
+func TestLeverMap(t *testing.T) {
+	e := NewEngine()
+	prof := &DevProfile{Cfg: map[string]ButtonCfg{
+		"dir_up":    {Mode: "normal", Target: "DOWN"},
+		"dir_down":  {Mode: "normal", Target: "UP"},
+		"dir_left":  {Mode: "normal", Target: "B1"},
+		"dir_right": {Mode: "off", Target: "RIGHT"},
+	}}
+	d := DevInput{Key: "x", Assign: 1, Map: map[string]string{}, Prof: prof, Controls: map[string]bool{"up": true, "left": true, "right": true}}
+	o := e.Output(time.Now(), []DevInput{d})
+	if !o["1:DOWN"] || o["1:UP"] || !o["1:B1"] || o["1:LEFT"] || o["1:RIGHT"] {
+		t.Fatal(o)
+	}
+	// 設定が無ければそのまま
+	d.Prof = &DevProfile{Cfg: map[string]ButtonCfg{}}
+	o = e.Output(time.Now(), []DevInput{d})
+	if !o["1:UP"] || !o["1:LEFT"] || !o["1:RIGHT"] {
+		t.Fatal(o)
 	}
 }

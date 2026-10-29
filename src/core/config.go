@@ -11,10 +11,10 @@ import (
 
 // ButtonCfg は1つの物理ボタンの割り当て。
 type ButtonCfg struct {
-	Mode   string  `json:"mode"`   // normal / turbo / off
-	Target string  `json:"target"` // B1..B6, START, COIN, "B1+B3" など
-	Other  bool    `json:"other"`  // もう一方のプレイヤーへ出力（拡張）
-	Speed  float64 `json:"speed"`  // 連射速度（発/秒）
+	Mode   string  `json:"mode"`          // normal / turbo / off
+	Target string  `json:"target"`        // B1..B6, START, COIN, "B1+B3" など
+	Other  bool    `json:"other"`         // もう一方のプレイヤーへ出力（拡張）
+	Speed  float64 `json:"speed"`         // 連射速度（発/秒）
 	On     int     `json:"on,omitempty"`  // 押すフレーム数（0なら速度から決める）
 	Off    int     `json:"off,omitempty"` // 離すフレーム数
 }
@@ -61,9 +61,9 @@ type Options struct {
 
 // Config はファイルに保存する全体。
 type Config struct {
-	Devices map[string]*DevSettings     `json:"devices"`
-	Games   map[string]*GameProfile     `json:"games"` // "_common" = 共通設定
-	Options Options                     `json:"options"`
+	Devices map[string]*DevSettings      `json:"devices"`
+	Games   map[string]*GameProfile      `json:"games"` // "_common" = 共通設定
+	Options Options                      `json:"options"`
 	Keys    map[string]map[string]string `json:"keys"` // "1"/"2" → 機能 → キー名
 
 	mu   sync.Mutex

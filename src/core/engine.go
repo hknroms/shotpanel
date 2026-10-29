@@ -89,17 +89,16 @@ func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
 		}
 		pl := d.Assign
 		other := 3 - pl
-		for pos, ctl := range d.Map {
-			c, ok := d.Prof.Cfg[pos]
-			if !ok || c.Mode == "off" || c.Mode == "" || ctl == "" {
-				continue
+		emit := func(id string, c ButtonCfg, pressed bool) {
+			if c.Mode == "off" || c.Mode == "" {
+				return
 			}
-			el, p := held(d.Key+"/"+pos, d.Controls[ctl])
+			el, p := held(id, pressed)
 			if !p {
-				continue
+				return
 			}
 			if on, off := PatternOf(c.Speed, c.On, c.Off); c.Mode == "turbo" && !TurboOnF(el, on, off) {
-				continue
+				return
 			}
 			op := pl
 			if c.Other {
@@ -111,19 +110,26 @@ func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
 				}
 			}
 		}
-		// レバー
+		for pos, ctl := range d.Map {
+			if c, ok := d.Prof.Cfg[pos]; ok && ctl != "" {
+				emit(d.Key+"/"+pos, c, d.Controls[ctl])
+			}
+		}
+		// レバー（方向ごとの割り当て "dir_up" などが無ければ、そのまま上下左右）
 		dirs := []string{"UP", "DOWN", "LEFT", "RIGHT"}
 		alt := d.Prof.Alt
 		altAxisLR := alt.Axis != "上下"
 		for _, dn := range dirs {
-			if !d.Controls[strings.ToLower(dn)] {
-				continue
-			}
+			lo := strings.ToLower(dn)
 			isLR := dn == "LEFT" || dn == "RIGHT"
 			if alt.On && isLR == altAxisLR {
 				continue // 交互連打は下で処理
 			}
-			out[itoa(pl)+":"+dn] = true
+			c, ok := d.Prof.Cfg["dir_"+lo]
+			if !ok {
+				c = ButtonCfg{Mode: "normal", Target: dn}
+			}
+			emit(d.Key+"/dir_"+lo, c, d.Controls[lo])
 		}
 		if alt.On {
 			a, b := "left", "right"

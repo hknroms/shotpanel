@@ -1,6 +1,27 @@
 {
  "versions": [
   {
+   "version": "0.8",
+   "date": "2026-10-29",
+   "title": "レバー（十字キー）の方向ごとの割り当て",
+   "changes": [
+    "画面のレバー（十字キー）を押すと、方向ごとの割り当てが開くようにした",
+    "上下左右それぞれに、別の方向・ボタン・スタートなどを割り当てたり、連射・なしにしたりできる",
+    "「上下を反対にする」「左右を反対にする」「そのままの方向に戻す」のボタンを付けた",
+    "「いまの割り当て」にレバーの4方向も出すようにした"
+   ],
+   "file": "files/ShotPanel_v0.8.zip",
+   "en": {
+    "title": "Per-direction lever (D-pad) mapping",
+    "changes": [
+     "Click the lever (D-pad) on screen to open per-direction mapping",
+     "Each of up/down/left/right can be mapped to another direction, a button, Start and so on, or set to turbo or off",
+     "Added buttons to flip up/down, flip left/right, and restore the normal directions",
+     "\"Current assignments\" now also lists the four lever directions"
+    ]
+   }
+  },
+  {
    "version": "0.7",
    "date": "2026-10-29",
    "title": "ボタンの呼び方をMAMEに合わせた／同時押しを選びやすく",
