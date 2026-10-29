@@ -9,7 +9,15 @@
     "割り当てのボタンを2つ以上選ぶと同時押しになるようにした（拡張設定の同時押しはなくした）",
     "「ほかの割り当て」は、起動中のゲームで使うものだけ出すようにした（ボタン7〜10はボタンが7個以上のゲームだけ、サービス・ティルトはそのゲームにある場合だけ）"
    ],
-   "file": "files/ShotPanel_v0.7.zip"
+   "file": "files/ShotPanel_v0.7.zip",
+   "en": {
+    "title": "Button names now follow MAME / easier simultaneous presses",
+    "changes": [
+     "Buttons are now called \"Button 1–6\", the same as MAME",
+     "Selecting two or more buttons in Assignment makes a simultaneous press (the simultaneous-press option in Advanced settings was removed)",
+     "\"Other assignments\" now lists only what the running game uses (Buttons 7–10 only for games with 7 or more buttons; Service and Tilt only when the game has them)"
+    ]
+   }
   },
   {
    "version": "0.6",
@@ -22,7 +30,17 @@
     "連射のパターンを、マスを押して直接変えられるようにした（1マス＝1/60秒）",
     "キーボードの設定に、ボタン7〜10と「共通・MAMEの操作」を追加"
    ],
-   "file": "files/ShotPanel_v0.6.zip"
+   "file": "files/ShotPanel_v0.6.zip",
+   "en": {
+    "title": "Start-on-the-right layout / other assignments / reads game info",
+    "changes": [
+     "Added the panel layout \"1 lever, 8 buttons, Start at the right end\"",
+     "Added \"Other assignments\": Buttons 7–10, Service, Test, Tilt, and MAME controls (menu, pause, reset, fast forward, quick save/load, exit)",
+     "Reads the player count and button count of the running game from MAME (mame -listxml) and dims buttons the game does not use",
+     "The turbo pattern can be edited directly by clicking the cells (1 cell = 1/60 s)",
+     "Keyboard settings: added Buttons 7–10 and \"Common / MAME controls\""
+    ]
+   }
   },
   {
    "version": "0.5",
@@ -34,7 +52,16 @@
     "選ぶボタンの下に、MAMEに送るキーを表示",
     "手連射メーターを、画面の一番下の「手連射測定」から開くように変更"
    ],
-   "file": "files/ShotPanel_v0.5.zip"
+   "file": "files/ShotPanel_v0.5.zip",
+   "en": {
+    "title": "Turbo set as a press/release pattern / swap button positions",
+    "changes": [
+     "Turbo is shown as a press/release frame pattern (■ = pressed, □ = released). Pick 30, 20, 15, 12, 10, 8.6, 7.5, 5 or 3, or set the press and release frames freely",
+     "Added \"Swap with another position\" to the button settings (for when the on-screen position differs from the real button)",
+     "The key sent to MAME is shown under each button",
+     "The hand-mash meter now opens from \"Hand-mash meter\" at the bottom of the window"
+    ]
+   }
   },
   {
    "version": "0.4",
@@ -43,7 +70,13 @@
    "changes": [
     "手連射メーターで、測るボタンを選べるようにした（「全部のボタン」か、1つのボタン）"
    ],
-   "file": "files/ShotPanel_v0.4.zip"
+   "file": "files/ShotPanel_v0.4.zip",
+   "en": {
+    "title": "Choose which button the hand-mash meter measures",
+    "changes": [
+     "The hand-mash meter can measure all buttons or a single button"
+    ]
+   }
   },
   {
    "version": "0.3",
@@ -52,7 +85,13 @@
    "changes": [
     "選んでいるコントローラーのボタンを手で連打すると、直近1秒の連打速度（発/秒）と最高値、連打しているボタンを表示する"
    ],
-   "file": "files/ShotPanel_v0.3.zip"
+   "file": "files/ShotPanel_v0.3.zip",
+   "en": {
+    "title": "Added the hand-mash meter",
+    "changes": [
+     "Mash a button on the selected controller to see your rate over the last second (presses/s), your best, and which button you are mashing"
+    ]
+   }
   },
   {
    "version": "0.2",
@@ -62,7 +101,14 @@
     "「キーボードの設定」を追加。MAMEのキー設定（cfg\\default.cfg）の読み込み・書き込みができる。違うキー・重複・ゲーム別の設定を表示",
     "2Pのボタン5・6の初期キーを E・H に変更（v0.1 の I・K ではMAMEに届いていなかった）"
    ],
-   "file": "files/ShotPanel_v0.2.zip"
+   "file": "files/ShotPanel_v0.2.zip",
+   "en": {
+    "title": "Keyboard settings (read/write MAME's key settings)",
+    "changes": [
+     "Added \"Keyboard settings\": reads and writes MAME's key settings (cfg\\default.cfg), and shows mismatched keys, duplicates and per-game overrides",
+     "Changed the default 2P Button 5/6 keys to E/H (the I/K keys in v0.1 did not reach MAME)"
+    ]
+   }
   },
   {
    "version": "0.1",
@@ -75,7 +121,17 @@
     "mame.ini の書き換え（joystick 0 / keyboardprovider dinput）と、元に戻す機能",
     "通知領域に常駐"
    ],
-   "file": "files/ShotPanel_v0.1.zip"
+   "file": "files/ShotPanel_v0.1.zip",
+   "en": {
+    "title": "First test version",
+    "changes": [
+     "Connected controllers are listed automatically; set each to 1P, 2P or Off",
+     "Layout patterns (2-button, 3-button, Neo Geo, 6-button) and single / turbo / off per button",
+     "Detects the game running in MAME and switches to that game's settings automatically",
+     "Edits mame.ini (joystick 0 / keyboardprovider dinput) with an undo",
+     "Runs in the notification area"
+    ]
+   }
   }
  ]
 }

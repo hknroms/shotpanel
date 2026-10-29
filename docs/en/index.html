@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>ShotPanel — turbo and button mapping for MAME</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--text:#e6edf3;--sub:#8b949e;--acc:#58a6ff;--ok:#3fb950;--ng:#f85149;--warn:#d29922}
+@media (prefers-color-scheme: light){:root{--bg:#f6f8fa;--panel:#fff;--line:#d0d7de;--text:#1f2328;--sub:#59636e;--acc:#0969da;--ok:#1a7f37;--ng:#cf222e;--warn:#9a6700}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:17px;margin:32px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sub{color:var(--sub);font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0}
+#drop{border:2px dashed var(--line);border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:.15s}
+#drop.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 8%,transparent)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.ok{color:var(--ok)}.ng{color:var(--ng)}.warn{color:var(--warn)}
+button{font:inherit;padding:10px 18px;border-radius:8px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+select{max-width:100%;font:inherit;padding:6px;border-radius:6px;background:var(--panel);color:var(--text);border:1px solid var(--line)}
+ul{margin:6px 0;padding-left:22px}
+details{margin:8px 0}
+summary{cursor:pointer;font-weight:600}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--sub);margin-left:6px}
+code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);padding:1px 5px;border-radius:4px}
+#log{font-size:13px;white-space:pre-wrap;color:var(--sub)}
+.bigl{display:block;padding:18px 20px;border-radius:12px;border:2px solid var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--text);text-decoration:none;margin:14px 0}
+.bigl b{display:block;font-size:20px;color:var(--acc)}
+.bigl span{display:block;font-size:13px;color:var(--sub);margin-top:4px}
+.cg{display:grid;gap:8px;margin:8px 0 4px}
+.cg-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.cg-ic{display:flex;gap:6px;align-items:center;min-width:160px}
+.cg-tx{flex:1;min-width:180px;font-size:14px}
+.cg-key{font-size:12px;color:var(--sub)}
+.lang{text-align:right;font-size:13px;margin-bottom:6px}.lang a{color:var(--acc)}
+.bigl:hover{background:color-mix(in srgb,var(--acc) 20%,transparent)}
+/* 会員承認ゲート */
+#site-content{display:none}
+.rep{display:flex;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rep:last-child{border-bottom:none}
+.rep .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.rep .t a{color:var(--text);text-decoration:none}
+.rep .k{font-size:11.5px;color:var(--sub);border:1px solid var(--line);border-radius:99px;padding:0 7px;white-space:nowrap}
+.rep .s{font-size:12.5px;white-space:nowrap;font-weight:600}
+.rs-new{color:var(--sub)}.rs-wip{color:var(--warn)}.rs-fix{color:var(--ok)}.rs-done{color:var(--ok)}.rs-no{color:var(--sub)}
+#reports summary{font-size:15px}
+#recheck{display:none}
+#recheck .rc{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+#recheck .rc:last-child{border-bottom:none}
+#recheck .rc .t a{color:var(--text);text-decoration:none}
+#recheck .rc .v{font-size:12px;color:var(--ok);font-weight:600;margin-left:6px}
+#recheck .rc .b{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+#recheck .rc .b a{font-size:12.5px;padding:4px 12px;border-radius:8px;border:1px solid var(--line);text-decoration:none;color:var(--text)}
+#recheck .rc .b a.ok{border-color:var(--ok);color:var(--ok)}
+#recheck .rc .b a.ng{border-color:var(--warn);color:var(--warn)}
+#auth-gate{max-width:520px;margin:10vh auto;padding:24px 18px;text-align:center}
+#auth-gate h1{margin-bottom:14px}
+#auth-gate p{color:var(--sub)}
+#auth-gate button{margin:10px 5px}
+#auth-status{white-space:pre-wrap}
+#member-bar{display:none;max-width:860px;margin:12px auto 0;padding:0 16px;text-align:right;font-size:13px;color:var(--sub)}
+#member-bar button{padding:4px 10px;font-size:12px;margin-left:10px}
+.shot{max-width:100%;border:1px solid var(--line);border-radius:8px;margin:6px 0}
+.dl{font-size:13px;margin:6px 0 0}
+.dl a{color:var(--acc)}
+ol{margin:6px 0;padding-left:22px}
+</style>
+</head>
+<body>
+<section id="auth-gate" class="panel" aria-live="polite">
+  <h1>ShotPanel</h1>
+  <p id="auth-status">Checking your sign-in…</p>
+  <button id="google-login" type="button" hidden>Sign in with Google / request access</button>
+  <button id="auth-logout" type="button" hidden>Sign out</button>
+</section>
+<div id="member-bar"><span id="member-name"></span><button id="member-logout" type="button">Sign out</button></div>
+<main id="site-content">
+<div class="lang"><a href="../">日本語</a> ｜ <b>English</b></div>
+<h1>ShotPanel</h1>
+<div class="sub">Turbo fire and button mapping for pads and arcade sticks, made for MAME (Windows 10/11). It reads your controller, applies turbo and button swaps, and sends the result to MAME as keyboard input. No installation needed. The app's screens are in Japanese.</div>
+
+<a class="bigl" id="dl-latest" href="#" style="margin-top:22px"><b>▶ Download the latest version</b><span id="dl-latest-sub">Loading…</span></a>
+
+<details class="panel" id="usage"><summary style="font-size:16px">How to use</summary>
+<div style="margin-top:8px">
+<h3 style="margin:0 0 6px;font-size:15px">Getting started</h3>
+<ol>
+<li>Unzip, put the folder anywhere you like and run <b>ShotPanel.exe</b>. The first time, Windows may show "Windows protected your PC"; choose "More info" → "Run anyway". Settings are saved automatically to <code>shotpanel.json</code> in the same folder.</li>
+<li>Open <b>MAMEの設定</b> (MAME settings) at the bottom, choose your MAME folder, and press the button to adapt the mame.ini it finds (sets joystick 0, and keyboardprovider dinput on newer MAME). The original file is kept and can be restored. Close MAME first.</li>
+<li>Open <b>キーボードの設定</b> (Keyboard settings) and press the write button. This writes the keys ShotPanel sends into MAME's <code>cfg\default.cfg</code> (needed because MAME has no default key for 2P Button 6).</li>
+<li>Connected controllers appear automatically. Set each one to 1P, 2P or Off. If the buttons on screen are not where the real ones are, register their positions by pressing them.</li>
+<li>Pick a layout pattern such as 2B-1. Click a button on screen to change just that button.</li>
+<li>Closing the window does not quit the app; it keeps running in the notification area. Right-click the icon to open settings, pause or quit.</li>
+</ol>
+<img class="shot" src="img/board.png" alt="The control panel: a lever and eight buttons, with Start at the right end. Button colors show single shot or turbo" loading="lazy">
+<img class="shot" src="img/editor.png" alt="Settings for one button: action, assignment and turbo pattern" loading="lazy">
+<div class="sub">The app itself is in Japanese; the labels in these pictures are translated for reference.</div>
+<h3 style="margin:14px 0 6px;font-size:15px">Per-game settings</h3>
+<ul>
+<li>When a game starts in MAME, ShotPanel reads the ROM name from the window title. Games without their own settings use the common settings; one button creates settings just for that game.</li>
+<li>You can copy settings from another game.</li>
+<li>For games with analog controls, turn on the option to let MAME read the pad directly; ShotPanel then stays out of the way for that game.</li>
+</ul>
+<h3 style="margin:14px 0 6px;font-size:15px">Requirements and notes</h3>
+<ul>
+<li>Windows 10/11 (64-bit) and the Microsoft Edge WebView2 Runtime (included with Windows 11 and updated Windows 10).</li>
+<li>Features handled inside a stick, such as its own turbo switch, cannot be read. Analog values (how far a stick is pushed) are not sent; sticks work only as up/down/left/right.</li>
+<li>When only the MAMEUI front end is open, ShotPanel cannot tell that MAME is running. Close MAMEUI too before changing mame.ini or default.cfg.</li>
+<li>Turbo is not perfectly synced to MAME's frames. If a game misses shots at 30 per second, lower it to 20 or 15.</li>
+</ul>
+</div>
+</details>
+
+<details class="panel" id="latestbox" open><summary style="font-size:16px">Latest version <span class="tag" id="latest-ver"></span></summary>
+<div id="latest" style="margin-top:8px">Loading…</div>
+</details>
+
+<h2>Version history</h2>
+<div id="history"></div>
+
+<div class="sub" style="margin-top:24px">This is unofficial software and is not affiliated with the MAME team. Each zip also contains the source code (source.zip).</div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function verHtml(v0, open) {
+  const v = Object.assign({}, v0, v0.en || {});   // English text when available
+  const li = a => a && a.length ? '<ul>' + a.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
+  const f = v.file ? '../' + v.file : '';
+  return `<details ${open ? 'open' : ''}><summary>v${esc(v.version)} <span class="tag">${esc(v.date)}</span> ${esc(v.title || '')}</summary>
+    ${v.changes && v.changes.length ? '<div><b>Changes</b>' + li(v.changes) + '</div>' : ''}
+    ${f ? `<p class="dl"><a href="${esc(f)}" download>Download v${esc(v.version)} (${esc(f.split('/').pop())})</a></p>` : ''}</details>`;
+}
+(async () => {
+  let DATA;
+  try { DATA = await (await fetch('../versions.json', { cache: 'no-store' })).json(); }
+  catch (e) { $('#latest').textContent = 'Could not load the version list.'; return; }
+  const L = DATA.versions[0];
+  $('#latest').innerHTML = verHtml(L, true); $('#latest-ver').textContent = 'v' + L.version + (L.date ? ' (' + L.date + ')' : '');
+  $('#dl-latest').href = '../' + L.file; $('#dl-latest').setAttribute('download', '');
+  $('#dl-latest-sub').textContent = 'v' + L.version + ' (' + L.date + ') · ' + L.file.split('/').pop();
+  $('#history').innerHTML = DATA.versions.slice(1).map(v => `<div class="panel">${verHtml(v, false)}</div>`).join('');
+})();
+</script>
+
+<script>
+// Sign-in gate. false = anyone can view (the mechanism is kept below). true = approval required, same as gradius3.
+window.REQUIRE_LOGIN = false;
+if (!window.REQUIRE_LOGIN) { document.getElementById('auth-gate').style.display = 'none'; document.getElementById('site-content').style.display = 'block'; }
+</script>
+<script type="module">
+// Firebase Web SDK（GitHub Pages向け。npm不要）
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVuANsHQGEDSEujscNoCXWlixBKAAIw1U",
+  authDomain: "gradius3-login-41798.firebaseapp.com",
+  projectId: "gradius3-login-41798",
+  storageBucket: "gradius3-login-41798.firebasestorage.app",
+  messagingSenderId: "570590177142",
+  appId: "1:570590177142:web:8db75cac44711a158e7c57"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+const gate = document.getElementById('auth-gate');
+const status = document.getElementById('auth-status');
+const loginButton = document.getElementById('google-login');
+const logoutButton = document.getElementById('auth-logout');
+const memberBar = document.getElementById('member-bar');
+const memberName = document.getElementById('member-name');
+const site = document.getElementById('site-content');
+let unsubscribe = null;
+let authSequence = 0;
+function showGate(message, allowLogin = false, allowLogout = false) {
+  gate.style.display = 'block';
+  site.style.display = 'none';
+  memberBar.style.display = 'none';
+  status.textContent = message;
+  loginButton.hidden = !allowLogin;
+  logoutButton.hidden = !allowLogout;
+}
+function showSite(user) {
+  gate.style.display = 'none';
+  site.style.display = 'block';
+  memberBar.style.display = 'block';
+  memberName.textContent = (user.displayName || user.email || 'User');
+}
+const REQUIRE_LOGIN = window.REQUIRE_LOGIN;
+if (!REQUIRE_LOGIN) {
+  gate.style.display = 'none';
+  site.style.display = 'block';
+} else {
+loginButton.addEventListener('click', async () => {
+  loginButton.disabled = true;
+  try { await signInWithPopup(auth, provider); }
+  catch (e) { showGate('Google sign-in failed. Check your browser pop-up settings.\n' + e.code, true); }
+  finally { loginButton.disabled = false; }
+});
+async function logout() {
+  try { await signOut(auth); }
+  catch (e) { showGate('Sign-out failed: ' + e.code, false, true); }
+}
+logoutButton.addEventListener('click', logout);
+document.getElementById('member-logout').addEventListener('click', logout);
+onAuthStateChanged(auth, async (user) => {
+  const sequence = ++authSequence;
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  if (!user) { showGate('Sign in with a Google account; the administrator must approve your access. Your first sign-in sends a request.', true); return; }
+  showGate('Checking your approval…', false, true);
+  const userRef = doc(db, 'users', user.uid);
+  try {
+    const snap = await getDoc(userRef);
+    if (sequence !== authSequence) return;
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        uid: user.uid,
+        name: user.displayName || '',
+        email: user.email || '',
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+    }
+    if (sequence !== authSequence) return;
+    unsubscribe = onSnapshot(userRef, (current) => {
+      if (sequence !== authSequence) return;
+      const state = current.data()?.status;
+      if (state === 'approved') showSite(user);
+      else if (state === 'rejected') showGate('Your request was not approved. Please contact the administrator.', false, true);
+      else showGate('Your request was received.\nIt is waiting for the administrator. Once approved, you can use this page.', false, true);
+    }, (error) => showGate('Could not get your approval status.\n' + error.code, false, true));
+  } catch (e) {
+    if (sequence === authSequence) showGate('Could not send your request.\n' + e.code, false, true);
+  }
+});
+}
+</script>
+</body>
+</html>
