@@ -217,15 +217,25 @@ func SetGameDirect(mameDir, rom string, direct bool) (string, error) {
 	return p, err
 }
 
-var titleRe = regexp.MustCompile(`^\s*([^:]*?(?i:mame)[^:]*):\s*(.*?)\s*\[([0-9a-z_]+)\]\s*$`)
+var (
+	// 新しいMAME（0.2xx）：「Raiden [raiden] - MAME 0.289 (LLP64)」「… [rom] screen 1 - MAME …」
+	titleNew = regexp.MustCompile(`^\s*(.*?)\s*\[([0-9a-z_]+)\](?:\s+screen\s+\d+)?\s+-\s+(\S*(?i:mame)\S*)`)
+	// 古いMAME・MAMEUI：「MAME: Raiden [raiden]」「MAMEUI: …」「ThunderMAME32: …」
+	titleOld = regexp.MustCompile(`^\s*([^:]*?(?i:mame)[^:]*):\s*(.*?)\s*\[([0-9a-z_]+)\]`)
+	// exe の名前にmameが付くときは、形にこだわらず「説明 [rom]」を探す
+	titleAny = regexp.MustCompile(`^(?:[^:\[]+:\s*)?(.*?)\s*\[([0-9a-z_]+)\]`)
+)
 
-// ParseMameTitle はMAMEのウィンドウタイトル「MAME: 雷電 [raiden]」からROM名とゲーム名を取り出す。
+// ParseMameTitle はMAMEのウィンドウタイトルからROM名とゲーム名を取り出す。
 func ParseMameTitle(title string, exeIsMame bool) (rom, desc string, ok bool) {
-	if m := titleRe.FindStringSubmatch(title); m != nil {
+	if m := titleNew.FindStringSubmatch(title); m != nil {
+		return m[2], m[1], true
+	}
+	if m := titleOld.FindStringSubmatch(title); m != nil {
 		return m[3], m[2], true
 	}
 	if exeIsMame {
-		if m := regexp.MustCompile(`^(?:[^:]+:\s*)?(.*?)\s*\[([0-9a-z_]+)\]\s*$`).FindStringSubmatch(title); m != nil {
+		if m := titleAny.FindStringSubmatch(title); m != nil {
 			return m[2], m[1], true
 		}
 	}

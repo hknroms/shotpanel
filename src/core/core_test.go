@@ -149,6 +149,9 @@ func TestTitle(t *testing.T) {
 		{"MAMEUI: The King of Fighters '98 - The Slugfest [kof98]", "kof98", "The King of Fighters '98 - The Slugfest", false},
 		{"ThunderMAME32: Gradius III (Japan, Program code R) [gradius3j]", "gradius3j", "Gradius III (Japan, Program code R)", false},
 		{"Raiden [raiden]", "raiden", "Raiden", true},
+		{"Raiden [raiden] - MAME 0.289 (LLP64)", "raiden", "Raiden", false},
+		{"Gradius III (Japan, version 3, newer) [gradius3j] - MAME 0.289 (LLP64)", "gradius3j", "Gradius III (Japan, version 3, newer)", false},
+		{"Darius (World, rev 2) [darius] screen 1 - MAME 0.289 (LLP64)", "darius", "Darius (World, rev 2)", false},
 	}
 	for _, c := range cases {
 		r, d, ok := ParseMameTitle(c.in, c.exe)

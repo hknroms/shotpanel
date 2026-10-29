@@ -1,6 +1,25 @@
 {
  "versions": [
   {
+   "version": "0.9.1",
+   "date": "2026-10-30",
+   "title": "新しいMAMEで起動中のゲームを見つけられなかったのを直した",
+   "changes": [
+    "新しいMAME（0.289 など）で、起動中のゲームを見つけられなかったのを直した（ウィンドウのタイトルの形「Raiden [raiden] - MAME 0.289 (LLP64)」に対応）。これで「MAMEを閉じてから押してください」の確認も効くようになった",
+    "「はじめにやること」の2番が ✓ にならないとき、何が残っているか（mame.ini・コントローラーの割り当て・キーの違い）を表示するようにした",
+    "「はじめにやること」の4番は、MAMEでゲームが見つかった時点で ✓ になるようにした"
+   ],
+   "file": "files/ShotPanel_v0.9.1.zip",
+   "en": {
+    "title": "Fixed detecting the running game in newer MAME",
+    "changes": [
+     "Fixed detecting the running game in newer MAME (0.289 etc.), whose window title looks like \"Raiden [raiden] - MAME 0.289 (LLP64)\". The \"close MAME first\" check now works too",
+     "When step 2 of Getting started is not checked, the app now shows what is left (mame.ini, controller assignments, key mismatches)",
+     "Step 4 of Getting started is checked as soon as a game is found in MAME"
+    ]
+   }
+  },
+  {
    "version": "0.9",
    "date": "2026-10-29",
    "title": "「はじめにやること」の案内／フォルダを選ぶ画面／二重に動くのを防ぐ",
