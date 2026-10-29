@@ -176,13 +176,18 @@ func SetIni(path string, vals map[string]string, onlyExisting map[string]bool, b
 // ApplyMame は mame.ini を「このソフト用」にする。
 // keyboardprovider を dinput に（このソフトが送るキーを新しいMAMEでも読めるように）。
 // joystick は 1 のまま（コントローラーはMAMEに見えたまま。ボタンとレバーの割り当ては default.cfg でキーボードだけにする。アナログ操作は使える）。
-func ApplyMame(ini string) ([]string, error) {
-	return SetIni(ini, map[string]string{"joystick": "1", "keyboardprovider": "dinput"},
+func ApplyMame(ini, provider string) ([]string, error) {
+	if provider != "win32" {
+		provider = "dinput"
+	}
+	return SetIni(ini, map[string]string{"joystick": "1", "keyboardprovider": provider},
 		map[string]bool{"keyboardprovider": true, "joystick": true}, true)
 }
 
 // IniReady は mame.ini がこのソフト用になっているか。
-func (f IniFile) Ready() bool { return !f.HasKbdProvider || f.KeyboardProvider == "dinput" }
+func (f IniFile) Ready() bool {
+	return !f.HasKbdProvider || f.KeyboardProvider == "dinput" || f.KeyboardProvider == "win32"
+}
 
 // RestoreMame はバックアップから戻す。
 func RestoreMame(ini string) error {

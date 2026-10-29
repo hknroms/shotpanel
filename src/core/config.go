@@ -57,6 +57,7 @@ type DevSettings struct {
 type Options struct {
 	OnlyWhenFront bool   `json:"onlyWhenFront"`
 	MameDir       string `json:"mameDir"`
+	KbdProvider   string `json:"kbdProvider"` // dinput（標準）/ win32
 }
 
 // Config はファイルに保存する全体。

@@ -320,7 +320,12 @@ type devOut struct {
 
 func (a *App) push(devs []win.DevState, withConfig bool) {
 	a.mu.Lock()
-	st := map[string]interface{}{"game": a.game, "active": a.active, "paused": a.paused}
+	var sent []string
+	for k := range a.sent {
+		sent = append(sent, k)
+	}
+	sort.Strings(sent)
+	st := map[string]interface{}{"game": a.game, "active": a.active, "paused": a.paused, "sent": sent}
 	a.mu.Unlock()
 	var list []devOut
 	for _, d := range devs {
@@ -453,7 +458,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		if cmd == "mameRestore" {
 			return true, core.RestoreMame(p.Path)
 		}
-		ch, err := core.ApplyMame(p.Path)
+		ch, err := core.ApplyMame(p.Path, a.cfg.Options.KbdProvider)
 		return ch, err
 	case "pickFolder":
 		dir, err := win.PickFolder(a.hwnd, "MAMEのフォルダを選んでください", arg)
@@ -490,7 +495,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 			return done, nil
 		}
 		for _, f := range inis {
-			if _, err := core.ApplyMame(f.Path); err != nil {
+			if _, err := core.ApplyMame(f.Path, a.cfg.Options.KbdProvider); err != nil {
 				return nil, err
 			}
 			done = append(done, f.Path)

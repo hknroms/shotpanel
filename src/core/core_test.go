@@ -96,7 +96,7 @@ func TestIni(t *testing.T) {
 	p := filepath.Join(dir, "mame.ini")
 	orig := "#\r\n# CORE INPUT OPTIONS\r\n#\r\njoystick                  1\r\nkeyboardprovider          auto\r\nrompath                   roms\r\n"
 	os.WriteFile(p, []byte(orig), 0644)
-	ch, err := ApplyMame(p)
+	ch, err := ApplyMame(p, "")
 	if err != nil || len(ch) != 1 {
 		t.Fatal(ch, err)
 	}
@@ -118,7 +118,7 @@ func TestIni(t *testing.T) {
 	// 古いMAME（keyboardprovider 無し）は足さない
 	old := filepath.Join(dir, "old.ini")
 	os.WriteFile(old, []byte("joystick 0\n"), 0644)
-	ApplyMame(old)
+	ApplyMame(old, "")
 	b, _ = os.ReadFile(old)
 	if string(b) != "joystick 1\n" {
 		t.Fatalf("%q", b)

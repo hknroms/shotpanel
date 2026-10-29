@@ -1,6 +1,23 @@
 {
  "versions": [
   {
+   "version": "0.9.3",
+   "date": "2026-10-30",
+   "title": "送っているキーの表示／キーの受け取り方の切り替え",
+   "changes": [
+    "画面の上の「MAMEに送信中」の横に、いま送っているキーを表示するようにした（例：MAMEに送信中：LCONTROL UP）",
+    "「MAMEの設定」に「キーの受け取り方」（keyboardprovider：dinput／win32）を追加。dinput でキーが届かないときは win32 にして「このソフト用にする」を押し直す"
+   ],
+   "file": "files/ShotPanel_v0.9.3.zip",
+   "en": {
+    "title": "Shows the keys being sent / choice of how MAME receives keys",
+    "changes": [
+     "The \"sending to MAME\" status now shows the keys currently being sent (e.g. LCONTROL UP)",
+     "Added how MAME receives keys (keyboardprovider: dinput / win32) to MAME settings. If keys do not reach the game with dinput, switch to win32 and run the set-up again"
+    ]
+   }
+  },
+  {
    "version": "0.9.2",
    "date": "2026-10-30",
    "title": "「はじめにやること」の2番が✓にならなかったのを直した",

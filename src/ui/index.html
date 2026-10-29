@@ -301,7 +301,7 @@ const PRESETS=GROUPS.flatMap(g=>g.items.map(p=>Object.assign(p,{neo:!!g.neo})));
 const lab=(t,neo)=>t.split("+").map(x=>neo&&/^B[1-4]$/.test(x)?"ABCD"[+x.slice(1)-1]:(/^B\d+$/.test(x)?x.slice(1):x)).join("+");
 
 /* ---------- 状態 ---------- */
-let cfg=null, devs=[], game={rom:""}, active=false, paused=false, keyNames=[], autostart=false;
+let sentKeys=[];let cfg=null, devs=[], game={rom:""}, active=false, paused=false, keyNames=[], autostart=false;
 let view=null, editKey=null, editManual=false;
 const ui={presetOpen:false,gOpen:{},sel:null,learn:null,mame:null};
 const $=s=>document.querySelector(s);
@@ -398,7 +398,7 @@ function renderStatus(){
   let pill;
   if(paused)pill=`<span class="pill warn">一時停止中</span>`;
   else if(game.rom&&curGameIsDirect())pill=`<span class="pill">このゲームはMAMEが直接読む設定</span>`;
-  else if(active)pill=`<span class="pill on">MAMEに送信中</span>`;
+  else if(active)pill=`<span class="pill on">MAMEに送信中${sentKeys.length?"："+esc(sentKeys.join(" ")):""}</span>`;
   else pill=`<span class="pill">${cfg.options.onlyWhenFront?"MAMEが前面にないので待機中":"待機中"}</span>`;
   st.innerHTML=game.rom?`<span class="dot on"></span><span>起動中</span><span class="rom">${esc(game.rom)}</span><span>${esc(game.title)}</span>${pill}`
     :`<span class="dot"></span><span>MAMEのゲームは起動していません</span>${pill}`;
@@ -740,13 +740,15 @@ function mameState(){
   if(!cfg.options.mameDir)return"nodir";
   if(!m||m.inis==null)return m&&m.error?"baddir":"loading";
   if(!m.inis.length)return"noini";
-  const iniOk=m.inis.every(f=>f.ready);
+  const prov=cfg.options.kbdProvider||"dinput";
+  const iniOk=m.inis.every(f=>!f.hasKbdProvider||f.keyboardprovider===prov);
   const keysOk=!!mk&&(mk.padBound||[]).length===0&&keysDiff()===0;
   return iniOk&&keysOk?"ready":"todo";
 }
 function mameReasons(){
   const m=ui.mame,mk=ui.mk,r=[];if(!m||!m.inis)return r;
-  const bad=m.inis.filter(f=>!f.ready);if(bad.length)r.push(`mame.ini の keyboardprovider が dinput になっていません（${bad.map(f=>esc(f.path)).join("、")}）`);
+  const prov=cfg.options.kbdProvider||"dinput";
+  const bad=m.inis.filter(f=>f.hasKbdProvider&&f.keyboardprovider!==prov);if(bad.length)r.push(`mame.ini の keyboardprovider が ${prov} になっていません（${bad.map(f=>esc(f.path)).join("、")}）`);
   if(!mk)r.push("入力の割り当て（default.cfg）を読めませんでした");
   else{if(mk.padBound&&mk.padBound.length)r.push(`入力の割り当てに、コントローラーを直接読む所が ${mk.padBound.length} か所残っています`);
     const d=keysDiff();if(d)r.push(`MAMEのキーとこのソフトのキーが ${d} か所違います`);}
@@ -763,7 +765,7 @@ function renderMame(){
   const ini=f=>`<div class="ini"><span class="p">${esc(f.path)}</span>
       <span>keyboardprovider <b class="mono">${f.hasKbdProvider?esc(f.keyboardprovider):"（古いMAMEのため無し）"}</b></span>
       <span>joystick <b class="mono">${esc(f.joystick||"（なし）")}</b></span>
-      <span class="${f.ready?"ok":"ng"}">${f.ready?"✓":"このままだと、このソフトのキーが届きません"}</span></div>`;
+      <span class="${!f.hasKbdProvider||f.keyboardprovider===(cfg.options.kbdProvider||"dinput")?"ok":"ng"}">${!f.hasKbdProvider||f.keyboardprovider===(cfg.options.kbdProvider||"dinput")?"✓":"このままだと、このソフトのキーが届きません"}</span></div>`;
   let status="";
   if(st==="nodir")status=`<p class="hint">「参照…」を押して、MAMEのフォルダ（mame.exe がある所）を選んでください。</p>`;
   else if(st==="baddir")status=`<p class="ng">${esc(m.error)}</p>`;
@@ -777,13 +779,16 @@ function renderMame(){
     ${m.runningDir&&m.runningDir!==cfg.options.mameDir?`<p class="hint">起動中のMAME：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
     ${status}
     <div class="inis">${(m.inis||[]).map(ini).join("")}</div>
-    ${st==="todo"||st==="ready"?`<div class="row">${st==="todo"?`<button class="sbtn pri" id="mameSetup" ${running?"disabled":""}>MAMEをこのソフト用にする</button>`:""}${hasBackup?`<button class="sbtn" id="mameUndo" ${running?"disabled":""}>元に戻す</button>`:""}${running?`<span class="hint ng">MAMEを閉じてから押してください</span>`:""}</div>`:""}`;
+    ${st==="todo"||st==="ready"?`<div class="row"><label style="width:auto" for="kbdProv">キーの受け取り方</label><select id="kbdProv"><option value="dinput" ${(cfg.options.kbdProvider||"dinput")==="dinput"?"selected":""}>dinput（標準）</option><option value="win32" ${cfg.options.kbdProvider==="win32"?"selected":""}>win32（dinput でキーが届かないとき）</option></select>
+      <span class="hint">「MAMEに送信中」なのにゲームが動かないときは win32 にして、もう一度「このソフト用にする」を押してください</span></div>
+    <div class="row">${st==="todo"?`<button class="sbtn pri" id="mameSetup" ${running?"disabled":""}>MAMEをこのソフト用にする</button>`:""}${hasBackup?`<button class="sbtn" id="mameUndo" ${running?"disabled":""}>元に戻す</button>`:""}${running?`<span class="hint ng">MAMEを閉じてから押してください</span>`:""}</div>`:""}`;
   const inp=$("#mameDir");
   const load=()=>{cfg.options.mameDir=inp.value.trim();changed();loadMame(cfg.options.mameDir)};
   $("#mameLoad").onclick=load;inp.onkeydown=e=>{if(e.key==="Enter")load()};
   $("#mamePick").onclick=pickMameDir;
   const ur=$("#useRunning");if(ur)ur.onclick=()=>{cfg.options.mameDir=m.runningDir;changed();loadMame(m.runningDir)};
   const sb=$("#mameSetup");if(sb)sb.onclick=doSetup;
+  const kp=$("#kbdProv");if(kp)kp.onchange=()=>{cfg.options.kbdProvider=kp.value;changed();renderMame();renderSetup()};
   const ub=$("#mameUndo");if(ub)ub.onclick=()=>{if(ub.dataset.c!=="1"){ub.dataset.c="1";ub.textContent="もう一度押すと元に戻す";return}
     call("mameUndo",{Dir:cfg.options.mameDir}).then(()=>{toast("元に戻しました");loadMame()}).catch(e=>toast(e,true))};
 }
@@ -905,7 +910,7 @@ $("#optFold").ontoggle=e=>{if(e.target.open)renderOpts()};
 /* ---------- 本体からの通知 ---------- */
 let lastRom=null,lastDevKeys="";
 window.onState=st=>{
-  devs=st.devices||[];active=st.active;paused=st.paused;
+  devs=st.devices||[];active=st.active;paused=st.paused;sentKeys=st.sent||[];
   const g=st.game||{rom:""};
   const romChanged=g.rom!==lastRom;game=g;
   if(st.config&&!pending){
