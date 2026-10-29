@@ -131,7 +131,7 @@ type MameKeys struct {
 func ReadMameKeys(mameDir string) (*MameKeys, error) {
 	dir := CfgDir(mameDir)
 	p := filepath.Join(dir, "default.cfg")
-	res := &MameKeys{Path: p, Keys: MameDefaultKeys()}
+	res := &MameKeys{Path: p, Keys: MameDefaultKeys(), PadBound: []string{}, Overrides: []string{}}
 	if _, err := os.Stat(p + backupSuffix); err == nil {
 		res.HasBackup = true
 	}

@@ -741,7 +741,7 @@ function mameState(){
   if(!m||m.inis==null)return m&&m.error?"baddir":"loading";
   if(!m.inis.length)return"noini";
   const iniOk=m.inis.every(f=>f.ready);
-  const keysOk=mk&&mk.padBound&&mk.padBound.length===0&&keysDiff()===0;
+  const keysOk=!!mk&&(mk.padBound||[]).length===0&&keysDiff()===0;
   return iniOk&&keysOk?"ready":"todo";
 }
 function mameReasons(){

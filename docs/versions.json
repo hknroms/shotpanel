@@ -1,6 +1,21 @@
 {
  "versions": [
   {
+   "version": "0.9.2",
+   "date": "2026-10-30",
+   "title": "「はじめにやること」の2番が✓にならなかったのを直した",
+   "changes": [
+    "「MAMEをこのソフト用にする」が済んでいても、「はじめにやること」の2番が ✓ にならず、「まだ残っています」の後ろも空だったのを直した"
+   ],
+   "file": "files/ShotPanel_v0.9.2.zip",
+   "en": {
+    "title": "Fixed step 2 of Getting started never being checked",
+    "changes": [
+     "Fixed step 2 of Getting started not getting a ✓ (with an empty \"still left\" message) even after MAME was set up"
+    ]
+   }
+  },
+  {
    "version": "0.9.1",
    "date": "2026-10-30",
    "title": "新しいMAMEで起動中のゲームを見つけられなかったのを直した",
