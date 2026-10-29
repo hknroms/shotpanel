@@ -1,6 +1,21 @@
 {
  "versions": [
   {
+   "version": "0.9.4",
+   "date": "2026-10-30",
+   "title": "MAMEUIが開いている間は書き換えないようにした",
+   "changes": [
+    "MAMEUIが開いている間は「このソフト用にする」「MAMEに書き込む」を止めるようにした（MAMEUIは閉じるときに設定を書き戻して、書き換えを消してしまうため）"
+   ],
+   "file": "files/ShotPanel_v0.9.4.zip",
+   "en": {
+    "title": "No changes to MAME's files while MAMEUI is open",
+    "changes": [
+     "Setting up MAME and writing keys are now blocked while MAMEUI is open (MAMEUI writes its settings back when it closes, which would undo the changes)"
+    ]
+   }
+  },
+  {
    "version": "0.9.3",
    "date": "2026-10-30",
    "title": "送っているキーの表示／キーの受け取り方の切り替え",

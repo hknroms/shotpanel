@@ -134,3 +134,26 @@ func ForegroundPID() uint32 {
 	pGetWindowThreadProcessId.Call(h, uintptr(unsafe.Pointer(&pid)))
 	return pid
 }
+
+var (
+	anyMame   bool
+	anyMameCB = syscall.NewCallback(func(h uintptr, _ uintptr) uintptr {
+		if v, _, _ := pIsWindowVisible.Call(h); v == 0 {
+			return 1
+		}
+		var pid uint32
+		pGetWindowThreadProcessId.Call(h, uintptr(unsafe.Pointer(&pid)))
+		if strings.Contains(strings.ToLower(filepath.Base(processPath(pid))), "mame") {
+			anyMame = true
+			return 0
+		}
+		return 1
+	})
+)
+
+// MameAppOpen はMAMEやMAMEUIの画面（ゲームを起動していない MAMEUI も含む）が開いているか。
+func MameAppOpen() bool {
+	anyMame = false
+	pEnumWindows.Call(anyMameCB, 0)
+	return anyMame
+}

@@ -553,6 +553,9 @@ func (a *App) mameNotRunning() error {
 	if a.game.Rom != "" {
 		return fmt.Errorf("MAMEが起動中です。MAMEを閉じてから書き込んでください（MAMEUIは閉じるときに設定を書き戻すことがあります）")
 	}
+	if win.MameAppOpen() {
+		return fmt.Errorf("MAMEUI（またはMAME）が開いています。MAMEUIは閉じるときに設定を書き戻して、書き換えを消してしまうので、完全に閉じてから押してください")
+	}
 	return nil
 }
 
