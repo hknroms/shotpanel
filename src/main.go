@@ -444,7 +444,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 				return nil, fmt.Errorf("フォルダが見つかりません: %s", dir)
 			}
 			if core.MameUIExe(dir) == "" {
-				return nil, fmt.Errorf("このフォルダに mameui64.exe（MAMEUI）がありません。MAMEUIのフォルダを選んでください: %s", dir)
+				return nil, fmt.Errorf("このフォルダに mameui.exe（MAMEUI）がありません。MAMEUIのフォルダを選んでください: %s", dir)
 			}
 			res["inis"] = core.FindInis(dir)
 		}
@@ -464,7 +464,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		ch, err := core.ApplyMame(p.Path, a.cfg.Options.KbdProvider)
 		return ch, err
 	case "pickFolder":
-		dir, err := win.PickFolder(a.hwnd, "MAMEUIのフォルダ（mameui64.exe がある所）を選んでください", arg)
+		dir, err := win.PickFolder(a.hwnd, "MAMEUIのフォルダ（mameui.exe がある所）を選んでください", arg)
 		if err == win.ErrCanceled {
 			return "", nil
 		}
@@ -479,7 +479,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 			return nil, err
 		}
 		if core.MameUIExe(p.Dir) == "" {
-			return nil, fmt.Errorf("このフォルダに mameui64.exe（MAMEUI）がありません")
+			return nil, fmt.Errorf("このフォルダに mameui.exe（MAMEUI）がありません")
 		}
 		inis := core.FindInis(p.Dir)
 		var done []string
