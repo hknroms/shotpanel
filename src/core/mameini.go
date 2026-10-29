@@ -9,10 +9,12 @@ import (
 	"strings"
 )
 
-// IniFile は見つかった mame.ini の情報。
+// IniFile は MAMEUI の設定ファイルの情報。
 type IniFile struct {
 	Path             string `json:"path"`
-	KeyboardProvider string `json:"keyboardprovider"` // 項目が無ければ ""（古いMAME）
+	Role             string `json:"role"` // main（mameui64.exe と同じフォルダの mame.ini）/ backup（ini\mame.ini）/ override（ゲーム別・種類別の ini）
+	Exists           bool   `json:"exists"`
+	KeyboardProvider string `json:"keyboardprovider"`
 	HasKbdProvider   bool   `json:"hasKbdProvider"`
 	Joystick         string `json:"joystick"`
 	HasBackup        bool   `json:"hasBackup"`
@@ -21,46 +23,129 @@ type IniFile struct {
 
 const backupSuffix = ".shotpanel-backup"
 
-// FindInis はMAMEフォルダの中の設定ファイル候補を探す。
-func FindInis(dir string) []IniFile {
-	var out []IniFile
-	seen := map[string]bool{}
-	cands := []string{"mame.ini", "mame64.ini", "mameui.ini", "mameui64.ini", filepath.Join("ini", "mame.ini"), filepath.Join("ini", "mameui.ini")}
-	// exe と同じ名前の ini（ThunderMAME など）
-	if ents, err := os.ReadDir(dir); err == nil {
-		for _, e := range ents {
-			n := strings.ToLower(e.Name())
-			if strings.HasSuffix(n, ".exe") && strings.Contains(n, "mame") {
-				cands = append(cands, strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))+".ini")
+// MameUIExe は MAMEUI のフォルダにある mameui*.exe（無ければ ""）。
+func MameUIExe(dir string) string {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range ents {
+		n := strings.ToLower(e.Name())
+		if strings.HasPrefix(n, "mameui") && strings.HasSuffix(n, ".exe") {
+			return filepath.Join(dir, e.Name())
+		}
+	}
+	return ""
+}
+
+// IniDir は MAMEUI の ini フォルダ（mame.ini の inipath の、. 以外の最初の場所。無ければ ini）。
+func IniDir(dir string) string {
+	d := "ini"
+	if v, err := ReadIni(filepath.Join(dir, "mame.ini")); err == nil {
+		for _, x := range strings.Split(strings.Trim(strings.TrimSpace(v["inipath"]), `"`), ";") {
+			x = strings.TrimSpace(x)
+			if x != "" && x != "." {
+				d = x
+				break
 			}
 		}
 	}
-	for _, c := range cands {
-		p := filepath.Join(dir, c)
-		key := strings.ToLower(p)
-		if seen[key] {
-			continue
-		}
-		vals, err := ReadIni(p)
+	if !filepath.IsAbs(d) {
+		d = filepath.Join(dir, d)
+	}
+	return d
+}
+
+func iniInfo(p, role string) IniFile {
+	f := IniFile{Path: p, Role: role}
+	if vals, err := ReadIni(p); err == nil {
+		f.Exists = true
+		f.KeyboardProvider, f.HasKbdProvider = vals["keyboardprovider"]
+		f.Joystick = vals["joystick"]
+	}
+	_, err := os.Stat(p + backupSuffix)
+	f.HasBackup = err == nil
+	return f
+}
+
+// FindInis は MAMEUI が読む設定ファイルを返す。
+// MAMEUI はゲームを始めるとき、mameui64.exe と同じフォルダの mame.ini を読み（無ければ ini\mame.ini）、
+// そのあと種類別（arcade.ini など）・ゲーム別（<ROM名>.ini）の ini を重ねる。
+func FindInis(dir string) []IniFile {
+	out := []IniFile{iniInfo(filepath.Join(dir, "mame.ini"), "main")}
+	idir := IniDir(dir)
+	if f := iniInfo(filepath.Join(idir, "mame.ini"), "backup"); f.Exists {
+		out = append(out, f)
+	}
+	// 種類別・ゲーム別の ini で keyboardprovider を決めているもの
+	for _, sub := range []string{idir, filepath.Join(idir, "source")} {
+		ents, err := os.ReadDir(sub)
 		if err != nil {
 			continue
 		}
-		seen[key] = true
-		f := IniFile{Path: p}
-		f.KeyboardProvider, f.HasKbdProvider = vals["keyboardprovider"]
-		f.Joystick = vals["joystick"]
-		_, err = os.Stat(p + backupSuffix)
-		f.HasBackup = err == nil
-		f.IsReady = f.Ready()
-		// MAMEのオプションらしい行が無いものは除外（フロントエンドの ini など）
-		if _, ok := vals["joystick"]; !ok && !f.HasKbdProvider {
-			if _, ok2 := vals["rompath"]; !ok2 {
+		for _, e := range ents {
+			n := strings.ToLower(e.Name())
+			if e.IsDir() || !strings.HasSuffix(n, ".ini") || (sub == idir && n == "mame.ini") || n == "ui.ini" {
 				continue
 			}
+			if f := iniInfo(filepath.Join(sub, e.Name()), "override"); f.HasKbdProvider {
+				out = append(out, f)
+			}
 		}
-		out = append(out, f)
 	}
 	return out
+}
+
+// MameReady は MAMEUI の設定がこのソフト用になっているか（provider は dinput / win32）。
+func MameReady(inis []IniFile, provider string) bool {
+	provider = normProvider(provider)
+	for _, f := range inis {
+		if f.Role == "main" && (!f.Exists || f.KeyboardProvider != provider) {
+			return false
+		}
+		if f.HasKbdProvider && f.KeyboardProvider != provider {
+			return false
+		}
+	}
+	return len(inis) > 0
+}
+
+func normProvider(p string) string {
+	if p != "win32" {
+		return "dinput"
+	}
+	return p
+}
+
+// MameUISetup は MAMEUI の ini をこのソフト用にする。書き換えた（作った）ファイルを返す。
+//   - mameui64.exe と同じフォルダの mame.ini：keyboardprovider と joystick 1（無ければ作る）
+//   - ini\mame.ini（あれば）：同じ
+//   - 種類別・ゲーム別の ini で keyboardprovider を決めているもの：keyboardprovider だけ
+func MameUISetup(dir, provider string) ([]string, error) {
+	provider = normProvider(provider)
+	var done []string
+	for _, f := range FindInis(dir) {
+		vals := map[string]string{"keyboardprovider": provider}
+		var only map[string]bool
+		if f.Role == "override" {
+			only = map[string]bool{"keyboardprovider": true}
+		} else {
+			vals["joystick"] = "1"
+		}
+		if !f.Exists {
+			if _, e := os.Stat(f.Path + backupSuffix); os.IsNotExist(e) {
+				os.WriteFile(f.Path+backupSuffix, nil, 0644) // 空 = 元はファイルが無かった
+			}
+		}
+		ch, err := SetIni(f.Path, vals, only, true)
+		if err != nil {
+			return done, fmt.Errorf("%s を書き換えられませんでした: %w", f.Path, err)
+		}
+		if len(ch) > 0 {
+			done = append(done, f.Path)
+		}
+	}
+	return done, nil
 }
 
 // ReadIni は "名前 値" 形式の ini を読む。
@@ -173,20 +258,14 @@ func SetIni(path string, vals map[string]string, onlyExisting map[string]bool, b
 	return changed, os.Rename(tmp, path)
 }
 
-// ApplyMame は mame.ini を「このソフト用」にする。
-// keyboardprovider を dinput に（このソフトが送るキーを新しいMAMEでも読めるように）。
-// joystick は 1 のまま（コントローラーはMAMEに見えたまま。ボタンとレバーの割り当ては default.cfg でキーボードだけにする。アナログ操作は使える）。
+// ApplyMame は1つの ini をこのソフト用にする（keyboardprovider と joystick 1）。
 func ApplyMame(ini, provider string) ([]string, error) {
-	if provider != "win32" {
-		provider = "dinput"
-	}
-	return SetIni(ini, map[string]string{"joystick": "1", "keyboardprovider": provider},
-		map[string]bool{"keyboardprovider": true, "joystick": true}, true)
+	return SetIni(ini, map[string]string{"joystick": "1", "keyboardprovider": normProvider(provider)}, nil, true)
 }
 
-// IniReady は mame.ini がこのソフト用になっているか。
+// Ready はこの ini の keyboardprovider がこのソフト用か。
 func (f IniFile) Ready() bool {
-	return !f.HasKbdProvider || f.KeyboardProvider == "dinput" || f.KeyboardProvider == "win32"
+	return f.KeyboardProvider == "dinput" || f.KeyboardProvider == "win32"
 }
 
 // RestoreMame はバックアップから戻す。
@@ -194,6 +273,10 @@ func RestoreMame(ini string) error {
 	b, err := os.ReadFile(ini + backupSuffix)
 	if err != nil {
 		return fmt.Errorf("バックアップが見つかりません")
+	}
+	if len(b) == 0 {
+		os.Remove(ini)
+		return os.Remove(ini + backupSuffix)
 	}
 	if err := os.WriteFile(ini, b, 0644); err != nil {
 		return err

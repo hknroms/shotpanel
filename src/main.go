@@ -443,6 +443,9 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 			if st, err := os.Stat(dir); err != nil || !st.IsDir() {
 				return nil, fmt.Errorf("フォルダが見つかりません: %s", dir)
 			}
+			if core.MameUIExe(dir) == "" {
+				return nil, fmt.Errorf("このフォルダに mameui64.exe（MAMEUI）がありません。MAMEUIのフォルダを選んでください: %s", dir)
+			}
 			res["inis"] = core.FindInis(dir)
 		}
 		return res, nil
@@ -461,7 +464,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		ch, err := core.ApplyMame(p.Path, a.cfg.Options.KbdProvider)
 		return ch, err
 	case "pickFolder":
-		dir, err := win.PickFolder(a.hwnd, "MAMEのフォルダを選んでください", arg)
+		dir, err := win.PickFolder(a.hwnd, "MAMEUIのフォルダ（mameui64.exe がある所）を選んでください", arg)
 		if err == win.ErrCanceled {
 			return "", nil
 		}
@@ -475,10 +478,10 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		if err := a.mameNotRunning(); err != nil {
 			return nil, err
 		}
-		inis := core.FindInis(p.Dir)
-		if len(inis) == 0 {
-			return nil, fmt.Errorf("このフォルダに mame.ini が見つかりません。MAMEのフォルダで「mame -createconfig」を一度実行すると作られます")
+		if core.MameUIExe(p.Dir) == "" {
+			return nil, fmt.Errorf("このフォルダに mameui64.exe（MAMEUI）がありません")
 		}
+		inis := core.FindInis(p.Dir)
 		var done []string
 		if cmd == "mameUndo" {
 			for _, f := range inis {
@@ -494,11 +497,12 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 			}
 			return done, nil
 		}
-		for _, f := range inis {
-			if _, err := core.ApplyMame(f.Path, a.cfg.Options.KbdProvider); err != nil {
-				return nil, err
-			}
-			done = append(done, f.Path)
+		a.cfg.Lock()
+		prov := a.cfg.Options.KbdProvider
+		a.cfg.Unlock()
+		done, err := core.MameUISetup(p.Dir, prov)
+		if err != nil {
+			return nil, err
 		}
 		a.cfg.Lock()
 		keys := a.cfg.Keys

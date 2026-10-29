@@ -228,7 +228,7 @@ input[type=text]{min-width:0;flex:1}
 
   <section><h2>つながっているコントローラー</h2><div class="devs" id="pads"></div></section>
 
-  <details class="fold big" id="mameFold"><summary>MAMEの設定</summary><div class="box" id="mameBox"></div></details>
+  <details class="fold big" id="mameFold"><summary>MAMEUIの設定</summary><div class="box" id="mameBox"></div></details>
   <details class="fold big" id="keyFold"><summary>キーボードの設定</summary><div class="box" id="keyBox"></div></details>
   <details class="fold big" id="optFold"><summary>全体の設定</summary><div class="box" id="optBox"></div></details>
   <button class="linkbtn" id="mashLink">手連射測定</button>
@@ -739,16 +739,17 @@ function mameState(){
   const m=ui.mame,mk=ui.mk;
   if(!cfg.options.mameDir)return"nodir";
   if(!m||m.inis==null)return m&&m.error?"baddir":"loading";
-  if(!m.inis.length)return"noini";
   const prov=cfg.options.kbdProvider||"dinput";
-  const iniOk=m.inis.every(f=>!f.hasKbdProvider||f.keyboardprovider===prov);
+  const iniOk=m.inis.length>0&&m.inis.every(f=>f.role==="main"?(f.exists&&f.keyboardprovider===prov):(!f.hasKbdProvider||f.keyboardprovider===prov));
   const keysOk=!!mk&&(mk.padBound||[]).length===0&&keysDiff()===0;
   return iniOk&&keysOk?"ready":"todo";
 }
 function mameReasons(){
   const m=ui.mame,mk=ui.mk,r=[];if(!m||!m.inis)return r;
   const prov=cfg.options.kbdProvider||"dinput";
-  const bad=m.inis.filter(f=>f.hasKbdProvider&&f.keyboardprovider!==prov);if(bad.length)r.push(`mame.ini の keyboardprovider が ${prov} になっていません（${bad.map(f=>esc(f.path)).join("、")}）`);
+  const main=m.inis.find(f=>f.role==="main");
+  if(main&&!main.exists)r.push(`MAMEUIの mame.ini（${esc(main.path)}）がまだありません（このソフトが作ります）`);
+  const bad=m.inis.filter(f=>f.exists&&f.keyboardprovider!==prov&&(f.role==="main"||f.hasKbdProvider));if(bad.length)r.push(`keyboardprovider が ${prov} になっていない ini があります（${bad.map(f=>esc(f.path)).join("、")}）`);
   if(!mk)r.push("入力の割り当て（default.cfg）を読めませんでした");
   else{if(mk.padBound&&mk.padBound.length)r.push(`入力の割り当てに、コントローラーを直接読む所が ${mk.padBound.length} か所残っています`);
     const d=keysDiff();if(d)r.push(`MAMEのキーとこのソフトのキーが ${d} か所違います`);}
@@ -757,31 +758,32 @@ function mameReasons(){
 function keysDiff(){const mk=ui.mk;if(!mk)return 99;let n=0;for(const pl of ["1","2"])for(const f of FUNCS)if((mk.keys[pl]||{})[f]!==cfg.keys[pl][f])n++;return n}
 async function doSetup(){
   ui.setupTried=true;
-  try{const r=await call("mameSetup",{Dir:cfg.options.mameDir});toast("MAMEをこのソフト用にしました（"+r.length+"か所）");await loadMame()}
+  try{const r=await call("mameSetup",{Dir:cfg.options.mameDir});toast("MAMEUIをこのソフト用にしました。MAMEUIを起動して試してください");await loadMame()}
   catch(e){toast(e,true)}
 }
 function renderMame(){
   const m=ui.mame||{dir:cfg.options.mameDir||"",inis:null},box=$("#mameBox"),st=mameState(),mk=ui.mk,running=!!game.rom;
-  const ini=f=>`<div class="ini"><span class="p">${esc(f.path)}</span>
-      <span>keyboardprovider <b class="mono">${f.hasKbdProvider?esc(f.keyboardprovider):"（古いMAMEのため無し）"}</b></span>
-      <span>joystick <b class="mono">${esc(f.joystick||"（なし）")}</b></span>
-      <span class="${!f.hasKbdProvider||f.keyboardprovider===(cfg.options.kbdProvider||"dinput")?"ok":"ng"}">${!f.hasKbdProvider||f.keyboardprovider===(cfg.options.kbdProvider||"dinput")?"✓":"このままだと、このソフトのキーが届きません"}</span></div>`;
+  const prov=cfg.options.kbdProvider||"dinput",ROLE={main:"MAMEUIが読む設定",backup:"控え（ini フォルダ）",override:"種類別・ゲーム別の設定"};
+  const ini=f=>{const ok=f.role==="main"?(f.exists&&f.keyboardprovider===prov):(!f.hasKbdProvider||f.keyboardprovider===prov);
+    return `<div class="ini"><span class="p">${esc(f.path)}　<span class="hint">${ROLE[f.role]||""}</span></span>
+      ${f.exists?`<span>keyboardprovider <b class="mono">${f.hasKbdProvider?esc(f.keyboardprovider):"（書かれていない＝auto）"}</b></span>
+      <span>joystick <b class="mono">${esc(f.joystick||"（書かれていない）")}</b></span>`:`<span>まだありません</span>`}
+      <span class="${ok?"ok":"ng"}">${ok?"✓":"このままだと、このソフトのキーが届きません"}</span></div>`};
   let status="";
-  if(st==="nodir")status=`<p class="hint">「参照…」を押して、MAMEのフォルダ（mame.exe がある所）を選んでください。</p>`;
+  if(st==="nodir")status=`<p class="hint">「参照…」を押して、MAMEUIのフォルダ（mameui64.exe がある所）を選んでください。</p>`;
   else if(st==="baddir")status=`<p class="ng">${esc(m.error)}</p>`;
-  else if(st==="noini")status=`<p class="ng">このフォルダに mame.ini が見つかりません（mame.ini・ini\\mame.ini などを探しました）。MAMEのフォルダで「mame -createconfig」を一度実行すると作られます。違うフォルダなら、選び直してください。</p>`;
-  else if(st==="ready")status=`<p class="ok">MAMEはこのソフト用になっています。コントローラーはMAMEに見えたままで、ボタンとレバーはこのソフトのキーだけを受け付けます。</p>`;
-  else if(st==="todo")status=`<p class="ng">まだこのソフト用になっていません。MAMEを閉じてから、下のボタンを押してください。</p><ul class="hint">${mameReasons().map(x=>`<li>${x}</li>`).join("")}</ul>
-    <p class="hint">ボタンを押しても直らないときは、MAMEが開いたままだった可能性があります（MAMEは終わるときに設定を書き戻します）。MAMEを閉じてから、もう一度押してください。</p>`;
+  else if(st==="ready")status=`<p class="ok">MAMEUIはこのソフト用になっています。コントローラーはMAMEに見えたままで、ボタンとレバーはこのソフトのキーだけを受け付けます。</p>`;
+  else if(st==="todo")status=`<p class="ng">まだこのソフト用になっていません。MAMEUIを閉じてから、下のボタンを押してください。</p><ul class="hint">${mameReasons().map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p class="hint">MAMEUIは閉じるときに設定を書き戻すので、MAMEUIを開いたままでは書き換えられません。</p>`;
   const hasBackup=(m.inis||[]).some(f=>f.hasBackup)||(mk&&mk.hasBackup);
-  box.innerHTML=`<p class="hint">このソフトのキーをMAMEに届けるための設定です。mame.ini（keyboardprovider を dinput に）と、MAMEの入力の割り当て（cfg\\default.cfg：ボタンとレバーをキーボードだけに）を書き換えます。コントローラーはMAMEに見えたままなので、アナログ操作のゲームはそのまま遊べます。書き換える前のファイルは残ります。</p>
-    <div class="row"><label style="width:auto" for="mameDir">MAMEのフォルダ</label><input type="text" id="mameDir" value="${esc(cfg.options.mameDir||"")}" placeholder="例: C:\\MAME"><button class="sbtn" id="mamePick">参照…</button><button class="sbtn" id="mameLoad">読み込む</button></div>
-    ${m.runningDir&&m.runningDir!==cfg.options.mameDir?`<p class="hint">起動中のMAME：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
+  box.innerHTML=`<p class="hint">このソフトのキーをMAMEUIに届けるための設定です。MAMEUIの mame.ini（mameui64.exe と同じフォルダ。無ければ作ります）の keyboardprovider と、入力の割り当て（cfg\\default.cfg：ボタンとレバーをキーボードだけに）を書き換えます。コントローラーはMAMEに見えたままなので、アナログ操作のゲームはそのまま遊べます。書き換える前のファイルは残ります。</p>
+    <div class="row"><label style="width:auto" for="mameDir">MAMEUIのフォルダ</label><input type="text" id="mameDir" value="${esc(cfg.options.mameDir||"")}" placeholder="例: D:\\mameui64-0-289"><button class="sbtn" id="mamePick">参照…</button><button class="sbtn" id="mameLoad">読み込む</button></div>
+    ${m.runningDir&&m.runningDir!==cfg.options.mameDir?`<p class="hint">起動中のMAMEUI：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
     ${status}
     <div class="inis">${(m.inis||[]).map(ini).join("")}</div>
     ${st==="todo"||st==="ready"?`<div class="row"><label style="width:auto" for="kbdProv">キーの受け取り方</label><select id="kbdProv"><option value="dinput" ${(cfg.options.kbdProvider||"dinput")==="dinput"?"selected":""}>dinput（標準）</option><option value="win32" ${cfg.options.kbdProvider==="win32"?"selected":""}>win32（dinput でキーが届かないとき）</option></select>
       <span class="hint">「MAMEに送信中」なのにゲームが動かないときは win32 にして、もう一度「このソフト用にする」を押してください</span></div>
-    <div class="row">${st==="todo"?`<button class="sbtn pri" id="mameSetup" ${running?"disabled":""}>MAMEをこのソフト用にする</button>`:""}${hasBackup?`<button class="sbtn" id="mameUndo" ${running?"disabled":""}>元に戻す</button>`:""}${running?`<span class="hint ng">MAMEを閉じてから押してください</span>`:""}</div>`:""}`;
+    <div class="row">${st==="todo"?`<button class="sbtn pri" id="mameSetup" ${running?"disabled":""}>MAMEUIをこのソフト用にする</button>`:""}${hasBackup?`<button class="sbtn" id="mameUndo" ${running?"disabled":""}>元に戻す</button>`:""}${running?`<span class="hint ng">MAMEUIを閉じてから押してください</span>`:""}</div>`:""}`;
   const inp=$("#mameDir");
   const load=()=>{cfg.options.mameDir=inp.value.trim();changed();loadMame(cfg.options.mameDir)};
   $("#mameLoad").onclick=load;inp.onkeydown=e=>{if(e.key==="Enter")load()};
@@ -801,10 +803,10 @@ function renderSetup(){
   const st=mameState(),list=connected();
   if(game.rom)triedGame=true;
   const steps=[
-    {t:"MAMEのフォルダを選ぶ",s:cfg.options.mameDir?esc(cfg.options.mameDir):"mame.exe がある所",done:["todo","ready"].includes(st),btn:`<button class="sbtn ${["todo","ready"].includes(st)?"":"pri"}" data-act="pick">参照…</button>`},
-    {t:"MAMEをこのソフト用にする",s:game.rom&&st==="todo"?"MAMEを閉じると押せます（mame.ini と入力の割り当てを書き換えます）":st==="todo"&&ui.setupTried?"まだ残っています："+mameReasons().join("／"):"mame.ini と入力の割り当てを書き換えます（MAMEは閉じておく）",done:st==="ready",btn:st==="todo"?`<button class="sbtn pri" data-act="setup" ${game.rom?"disabled":""}>このソフト用にする</button>`:""},
+    {t:"MAMEUIのフォルダを選ぶ",s:cfg.options.mameDir?esc(cfg.options.mameDir):"mameui64.exe がある所",done:["todo","ready"].includes(st),btn:`<button class="sbtn ${["todo","ready"].includes(st)?"":"pri"}" data-act="pick">参照…</button>`},
+    {t:"MAMEUIをこのソフト用にする",s:game.rom&&st==="todo"?"MAMEUIを閉じると押せます（mame.ini と入力の割り当てを書き換えます）":st==="todo"&&ui.setupTried?"まだ残っています："+(mameReasons().join("／")||"（MAMEUIの設定を開いて確かめてください）"):"mame.ini と入力の割り当てを書き換えます（MAMEUIは閉じておく）",done:st==="ready",btn:st==="todo"?`<button class="sbtn pri" data-act="setup" ${game.rom?"disabled":""}>このソフト用にする</button>`:""},
     {t:"コントローラーを確かめる",s:list.length?"下の一覧で 1P／2P が合っているか、ボタンを押して光るか確かめます":"コントローラーをつなぐと、下に出てきます",done:list.some(d=>devCfg(d.key).assign),btn:""},
-    {t:"MAMEでゲームを起動して試す",s:"上に ROM 名が出て「MAMEに送信中」になればOK",done:triedGame,btn:""}];
+    {t:"MAMEUIでゲームを起動して試す",s:"上に ROM 名が出て「MAMEに送信中」になればOK",done:triedGame,btn:""}];
   const allDone=steps.every(x=>x.done);
   if(allDone||setupHidden){el.innerHTML="";return}
   const cur=steps.findIndex(x=>!x.done);
@@ -839,7 +841,7 @@ function renderKeys(){
   const rows=FUNCS.map(f=>`<b>${FNAME[f]}</b>${cell("1",f)}${cell("2",f)}`).join("");
   const srows=SYSF.map(f=>`<b>${SYSNAME[f]}</b>${cell("0",f)}<span class="hint">${SYS_WRITABLE.includes(f)?"":"書き込みはしません"}</span>`).join("");
   box.innerHTML=`<p class="hint">このソフトがMAMEに送るキーと、MAMEが受け付けるキーを合わせます。「MAMEに書き込む」を押すと、MAMEの cfg\\default.cfg に書き込みます（MAMEの「入力設定（全体）」と同じ場所です）。</p>
-    ${!dir?`<p class="hint ng">先に「MAMEの設定」でMAMEのフォルダを指定してください。</p>`:""}
+    ${!dir?`<p class="hint ng">先に「MAMEUIの設定」でMAMEUIのフォルダを指定してください。</p>`:""}
     <div style="overflow-x:auto"><div class="keys"><b></b><b>1P</b><b>2P</b>${rows}</div></div>
     <h4>共通・MAMEの操作</h4>
     <p class="hint">MAMEの操作キー（メニュー・一時停止など）はMAMEのバージョンで初期値が違います。ここではMAME 0.289 の初期値にしています。古いMAMEでは「MAMEの設定を読み込む」か、手で合わせてください。</p>

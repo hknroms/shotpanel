@@ -93,50 +93,59 @@ func TestAlt(t *testing.T) {
 
 func TestIni(t *testing.T) {
 	dir := t.TempDir()
-	p := filepath.Join(dir, "mame.ini")
-	orig := "#\r\n# CORE INPUT OPTIONS\r\n#\r\njoystick                  1\r\nkeyboardprovider          auto\r\nrompath                   roms\r\n"
-	os.WriteFile(p, []byte(orig), 0644)
-	ch, err := ApplyMame(p, "")
-	if err != nil || len(ch) != 1 {
-		t.Fatal(ch, err)
-	}
-	b, _ := os.ReadFile(p)
-	if !strings.Contains(string(b), "joystick                  1\r\n") || !strings.Contains(string(b), "keyboardprovider          dinput\r\n") {
-		t.Fatal(string(b))
+	os.WriteFile(filepath.Join(dir, "mameui64.exe"), nil, 0644)
+	os.WriteFile(filepath.Join(dir, "MAMEUI.ini"), []byte("rompath roms\njoystick 1\n"), 0644) // MAMEUI の画面の設定（対象外）
+	os.MkdirAll(filepath.Join(dir, "ini", "source"), 0755)
+	backup := "keyboardprovider auto\r\njoystick 0\r\n"
+	os.WriteFile(filepath.Join(dir, "ini", "mame.ini"), []byte(backup), 0644)
+	os.WriteFile(filepath.Join(dir, "ini", "arcade.ini"), []byte("keyboardprovider rawinput\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "ini", "raiden.ini"), []byte("gamma 1.0\n"), 0644)
+	if MameUIExe(dir) == "" {
+		t.Fatal("exe")
 	}
 	fs := FindInis(dir)
-	if len(fs) != 1 || !fs[0].HasBackup || fs[0].Joystick != "1" || !fs[0].Ready() {
+	if len(fs) != 3 || fs[0].Role != "main" || fs[0].Exists || fs[1].Role != "backup" || fs[2].Role != "override" {
 		t.Fatal(fs)
 	}
-	if err := RestoreMame(p); err != nil {
-		t.Fatal(err)
+	if MameReady(fs, "win32") {
+		t.Fatal("should not be ready")
 	}
-	b, _ = os.ReadFile(p)
-	if string(b) != orig {
-		t.Fatal("restore mismatch")
+	done, err := MameUISetup(dir, "win32")
+	if err != nil || len(done) != 3 {
+		t.Fatal(done, err)
 	}
-	// 古いMAME（keyboardprovider 無し）は足さない
-	old := filepath.Join(dir, "old.ini")
-	os.WriteFile(old, []byte("joystick 0\n"), 0644)
-	ApplyMame(old, "")
-	b, _ = os.ReadFile(old)
-	if string(b) != "joystick 1\n" {
-		t.Fatalf("%q", b)
+	fs = FindInis(dir)
+	if !MameReady(fs, "win32") || MameReady(fs, "dinput") {
+		t.Fatal(fs)
 	}
-	// ゲーム別
-	gp, err := SetGameDirect(dir, "raiden", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if v, _ := ReadIni(gp); v["joystick"] != "1" {
+	if v, _ := ReadIni(filepath.Join(dir, "mame.ini")); v["keyboardprovider"] != "win32" || v["joystick"] != "1" {
 		t.Fatal(v)
 	}
-	SetGameDirect(dir, "raiden", false)
-	if _, err := os.Stat(gp); !os.IsNotExist(err) {
-		t.Fatal("should be removed")
+	if v, _ := ReadIni(filepath.Join(dir, "ini", "arcade.ini")); v["keyboardprovider"] != "win32" || v["joystick"] != "" {
+		t.Fatal(v)
 	}
-	if _, err := SetGameDirect(dir, "../x", true); err == nil {
-		t.Fatal("bad rom accepted")
+	b, _ := os.ReadFile(filepath.Join(dir, "ini", "mame.ini"))
+	if !strings.Contains(string(b), "keyboardprovider win32\r\n") || !strings.Contains(string(b), "joystick 1\r\n") {
+		t.Fatalf("%q", b)
+	}
+	// 元に戻す：作った mame.ini は消え、ほかは元どおり
+	for _, f := range fs {
+		if f.HasBackup {
+			if err := RestoreMame(f.Path); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "mame.ini")); !os.IsNotExist(err) {
+		t.Fatal("created mame.ini should be removed")
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "ini", "mame.ini")); string(b) != backup {
+		t.Fatalf("%q", b)
+	}
+	// inipath が別の場所を指していればそこを見る
+	os.WriteFile(filepath.Join(dir, "mame.ini"), []byte("inipath .;myini\n"), 0644)
+	if IniDir(dir) != filepath.Join(dir, "myini") {
+		t.Fatal(IniDir(dir))
 	}
 }
 
