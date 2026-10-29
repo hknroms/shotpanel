@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>連射パネル設定</title>
+<style>
+:root{
+  --bg:#14161c; --panel:#1d2029; --panel2:#262a35; --line:#353a48;
+  --fg:#e8e9ee; --muted:#9097a8; --accent:#ffb627;
+  --normal:#4da3ff; --turbo:#ff5a4e; --p2:#3ddc97; --off:#5b6070; --warn:#ff8a3d;
+  --body:"Yu Gothic UI","Meiryo UI","Meiryo",system-ui,sans-serif;
+  --mono:"Cascadia Mono","Consolas",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+body{font-family:var(--body);font-size:13px;line-height:1.55;padding:14px 14px 64px;user-select:none}
+input,select,textarea{user-select:text}
+button{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h2{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin:0 0 8px}
+h4{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.06em}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.mono{font-family:var(--mono)}
+select,input[type=text]{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;max-width:100%}
+input[type=text]{min-width:0;flex:1}
+.sbtn{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12.5px}
+.sbtn:hover{border-color:var(--accent)}
+.sbtn.pri{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
+.sbtn:disabled{opacity:.4;cursor:default}
+
+/* ヘッダー */
+.status{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
+.dot.on{background:var(--p2);box-shadow:0 0 8px var(--p2)}
+.rom{font-family:var(--mono);color:var(--accent)}
+.pill{font-size:11px;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:1px 8px;white-space:nowrap;margin-left:auto}
+.pill.on{border-color:var(--p2);color:var(--p2)}
+.pill.warn{border-color:var(--warn);color:var(--warn)}
+.editbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.editbar label{font-size:12px;color:var(--muted)}
+.notice{background:var(--panel2);border:1px dashed var(--muted);border-radius:8px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+
+/* コントローラー */
+.devs{display:flex;flex-direction:column;gap:10px}
+.pad{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.pad[aria-pressed="true"]{border-color:var(--accent);background:var(--panel2);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.pad.dis{opacity:.6}
+.phead{display:flex;align-items:center;gap:8px}
+.phead .nm{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.conn{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted);margin-left:6px;font-weight:400}
+.ty{font-size:12px;color:var(--muted)}
+.ord{display:flex;gap:4px}
+.ord button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;width:28px;height:26px;cursor:pointer}
+.ord button:disabled{opacity:.3;cursor:default}
+.pctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:8px;padding:18px;color:var(--muted);text-align:center}
+.devbody{background:var(--panel);border:1px solid var(--accent);border-top:0;border-radius:0 0 8px 8px;padding:12px;display:flex;flex-direction:column;gap:10px;margin-top:-10px}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:var(--panel2);color:var(--fg);border:0;border-right:1px solid var(--line);padding:5px 11px;font-size:12.5px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#111;font-weight:700}
+
+/* パネルの絵 */
+.board{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.topstrip{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:flex-end;border-bottom:1px dashed var(--line);padding-bottom:8px}
+.topstrip .btn{flex-direction:row;gap:5px;padding:2px 4px}
+.topstrip .cap{width:30px;height:16px;border-radius:8px}
+.deck{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.deck.sr{grid-template-columns:auto 1fr auto}
+.startcol{align-self:start;padding-top:2px}
+.lever{width:64px;height:64px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;position:relative}
+.lever b{width:26px;height:26px;border-radius:50%;background:var(--turbo);box-shadow:inset -4px -6px 0 rgba(0,0,0,.25);transition:transform .03s}
+.lever small{position:absolute;bottom:-18px;font-size:10.5px;color:var(--muted);white-space:nowrap}
+.rows{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:380px}
+.brow{display:grid;gap:4px}
+.brow.stag{padding-left:22px}
+.btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;color:var(--fg);cursor:pointer;padding:3px 2px;border-radius:8px;min-width:0}
+.btn[aria-pressed="true"]{background:rgba(255,182,39,.14)}
+.btn.learn .cap{outline:3px solid var(--accent);outline-offset:3px;animation:pulse .8s infinite alternate}
+@keyframes pulse{from{outline-color:var(--accent)}to{outline-color:transparent}}
+@media (prefers-reduced-motion:reduce){.btn.learn .cap{animation:none}.lever b{transition:none}}
+.cap{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;box-shadow:inset -5px -7px 0 rgba(0,0,0,.25),0 0 0 3px var(--bg);position:relative}
+.cap span{color:#111}
+.cap.lit{filter:brightness(1.75);box-shadow:inset 0 0 0 2px #fff,0 0 0 3px var(--bg),0 0 14px rgba(255,255,255,.5)}
+.cap.two{box-shadow:inset -5px -7px 0 rgba(0,0,0,.25),0 0 0 3px var(--bg),0 0 0 5px var(--p2)}
+.cap.two::after{content:attr(data-p);position:absolute;top:-7px;right:-9px;background:var(--p2);color:#111;font-family:var(--mono);font-size:9.5px;padding:0 3px;border-radius:4px}
+.cap.unreg{background:transparent;border:1px dashed var(--muted);box-shadow:none}
+.ph{font-family:var(--mono);font-size:10.5px;color:var(--accent);min-height:14px;line-height:14px;white-space:nowrap}
+.c-normal{background:var(--normal)} .c-turbo{background:var(--turbo)} .c-off{background:var(--off)}
+.gpad{position:relative;width:100%;max-width:460px;margin:0 auto;aspect-ratio:4/3;background:var(--bg);border:1px solid var(--line);border-radius:38% 38% 46% 46% / 30% 30% 70% 70%}
+.gpad .pos{position:absolute;transform:translate(-50%,-50%)}
+.gpad .btn{padding:0;gap:1px}
+.gpad .cap{width:30px;height:30px;font-size:12px}
+.gpad .pp.sm .cap{width:38px;height:17px;border-radius:9px}
+.gpad .pp.touch .cap{width:62px;height:32px;border-radius:8px}
+.gpad .ph{font-size:9.5px;min-height:12px;line-height:12px}
+.dpad{position:absolute;left:21%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px}
+.dpad i{position:absolute;background:var(--panel2);border:1px solid var(--line);border-radius:4px}
+.dpad i.lit{background:var(--accent)}
+.dpad i.v{left:18px;top:0;width:18px;height:54px}.dpad i.h{top:18px;left:0;height:18px;width:54px}
+.dpad i.u{left:18px;top:0;width:18px;height:18px}.dpad i.d{left:18px;top:36px;width:18px;height:18px}.dpad i.l{left:0;top:18px;width:18px;height:18px}.dpad i.r{left:36px;top:18px;width:18px;height:18px}
+.dpad small{position:absolute;top:58px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted);white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.learnbar{background:var(--accent);color:#111;border-radius:8px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;font-weight:700}
+.learnbar .sbtn{background:#111;color:var(--fg);border-color:#111}
+
+.meter{display:grid;grid-template-columns:auto 1fr auto;gap:8px 14px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.mnum{display:flex;align-items:baseline;gap:6px;min-width:150px}
+.mlab{font-size:12px;color:var(--muted)}
+.mnum b{font-family:var(--mono);font-size:26px;font-variant-numeric:tabular-nums;min-width:62px;text-align:right;color:var(--accent)}
+.unit{font-size:12px;color:var(--muted)}
+.mgauge{position:relative;height:12px;background:var(--panel2);border-radius:6px;margin-bottom:12px}
+.mbar{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--normal),var(--accent),var(--turbo));border-radius:6px}
+.mpeak{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);left:0;display:none}
+.mgauge i{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.mgauge i span{position:absolute;top:13px;left:50%;transform:translateX(-50%);font-size:9.5px;font-style:normal;color:var(--muted);font-family:var(--mono)}
+.mside{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+@media (max-width:560px){.meter{grid-template-columns:1fr}.mside{flex-direction:row;align-items:center;gap:10px}}
+/* 配置パターン */
+.bigbtn{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:700;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.bigbtn:hover,.gbtn:hover{border-color:var(--accent)}
+.bigbtn .cur{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:500}
+.pgroups{display:flex;flex-direction:column;gap:8px}
+.pgroup{display:flex;flex-direction:column;gap:8px}
+.gbtn{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px 12px;text-align:left;cursor:pointer;display:flex;justify-content:space-between}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+.preset{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:left;color:var(--fg);cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.preset[aria-pressed="true"]{border-color:var(--accent);background:var(--panel2)}
+.code{font-family:var(--mono);font-size:12px;background:var(--accent);color:#111;border-radius:4px;padding:0 5px}
+.mini{display:grid;grid-template-columns:repeat(3,26px);gap:5px}
+.mini.w4{grid-template-columns:repeat(4,26px)}
+.mini i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-family:var(--mono);font-size:10px;font-weight:700;color:#111;letter-spacing:-.04em}
+
+/* 個別設定 */
+.editor{background:var(--bg);border:1px solid var(--accent);border-radius:8px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.editor .row>.tgts,.editor .row>.speed{min-width:0;flex:1 1 260px}
+.devbody>*{min-width:0}
+.editor h3{margin:0;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row>label{font-size:12px;color:var(--muted);width:68px}
+.speed{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.sg{display:flex;flex-direction:column;gap:3px}
+.sg small{font-size:10.5px;color:var(--muted)}
+.sg .opts{display:flex;gap:4px}
+.sp{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;cursor:pointer;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sp[aria-pressed="true"]{background:var(--turbo);border-color:var(--turbo);color:#111;font-weight:700}
+.speed .opts{display:flex;flex-wrap:wrap;gap:4px}
+.speed .sp{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 8px;min-width:46px}
+.speed .sp b{font-size:14px}
+.pt{font-size:9px;letter-spacing:-1px;color:var(--muted);white-space:nowrap}
+.sp[aria-pressed="true"] .pt{color:#111}
+.custom{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+.custom .sbtn{padding:2px 9px}
+.custom b{min-width:18px;text-align:center}
+.ptbig{letter-spacing:1px;color:var(--turbo)}
+.strip{display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+.strip .cell{width:22px;height:22px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:0}
+.strip .cell.on{background:var(--turbo);border-color:var(--turbo);color:#111}
+.strip .cell.add{border-style:dashed}
+.strip .hint{margin-left:6px}
+.tgts{display:flex;flex-wrap:wrap;gap:4px}
+.tgts button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.25}
+.tgts button b{font-size:12.5px;font-weight:500}
+.tgts button span{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.tgts button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#111}
+.tgts button[aria-pressed="true"] span{color:#111}
+.tgts button.unused{opacity:.45}
+.tgts button.unused b::after{content:"（未使用）";font-size:10px}
+.swaprow select{flex:1;min-width:0}
+.linkbtn{background:none;border:0;color:var(--accent);text-decoration:underline;cursor:pointer;padding:4px 0;font-size:13px;align-self:flex-start}
+.frames{font-size:11.5px;color:var(--muted);font-family:var(--mono);width:100%}
+
+.fold summary{cursor:pointer;color:var(--muted);font-size:12.5px;padding:3px 0}
+.fold[open]>summary{margin-bottom:8px}
+.fold.big>summary{font-size:12px;font-weight:700;letter-spacing:.12em}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.switch{display:inline-flex;gap:8px;align-items:center;cursor:pointer}
+.switch input{width:16px;height:16px;accent-color:var(--accent)}
+.alist{display:grid;gap:3px}
+.arow{display:grid;grid-template-columns:minmax(80px,1fr) 22px 14px minmax(0,1.2fr) minmax(0,1.2fr);gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;color:var(--fg);text-align:left;cursor:pointer;font-size:12.5px}
+.arow[aria-pressed="true"]{border-color:var(--accent)}
+.arow .an{font-family:var(--mono);color:var(--accent);font-size:12px}
+.arow .as{color:var(--muted);font-weight:700}
+.arow .sw{width:12px;height:12px;border-radius:50%}
+.arow .ak{font-family:var(--mono);font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.inis{display:flex;flex-direction:column;gap:6px}
+.ini{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.ini .p{font-family:var(--mono);font-size:11.5px;flex:1 1 100%;overflow-wrap:anywhere}
+.ok{color:var(--p2)} .ng{color:var(--warn)}
+.keys{display:grid;grid-template-columns:auto minmax(170px,1fr) minmax(170px,1fr);gap:4px 12px;align-items:center;min-width:430px}
+.kc{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:center;font-size:11.5px}
+.keys b{font-size:12px;color:var(--muted);font-weight:500}
+
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:8px 14px;display:flex;gap:10px;align-items:center}
+.toast{font-size:12.5px;color:var(--p2);margin-right:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast.err{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="editbar" id="editbar"></div>
+  <div id="notice"></div>
+
+  <section><h2>つながっているコントローラー</h2><div class="devs" id="pads"></div></section>
+
+  <details class="fold big" id="mameFold"><summary>MAMEの設定</summary><div class="box" id="mameBox"></div></details>
+  <details class="fold big" id="keyFold"><summary>キーボードの設定</summary><div class="box" id="keyBox"></div></details>
+  <details class="fold big" id="optFold"><summary>全体の設定</summary><div class="box" id="optBox"></div></details>
+  <button class="linkbtn" id="mashLink">手連射測定</button>
+  <section id="mashBox" hidden></section>
+</div>
+<div class="bar"><span class="toast" id="toast"></span><span class="hint">変更は自動で保存されます</span><button class="sbtn" id="hideBtn">閉じる（常駐を続ける）</button></div>
+
+<script>
+"use strict";
+/* ---------- 定数 ---------- */
+const COMMON="_common";
+const SPEEDS={30:"1F押し・1F離し",20:"1F押し・2F離し",15:"2F押し・2F離し",12:"2F押し・3F離し",10:"3F押し・3F離し",8.6:"3F押し・4F離し",7.5:"4F押し・4F離し",5:"6F押し・6F離し",3:"10F押し・10F離し"};
+const FRAMES={30:[1,1],20:[1,2],15:[2,2],12:[2,3],10:[3,3],8.6:[3,4],7.5:[4,4],5:[6,6],3:[10,10]};
+const TARGETS=["B1","B2","B3","B4","B5","B6","START","COIN"];
+const COMBOS=["B1+B2","B3+B4","B1+B3","B2+B4","B1+B2+B3","B4+B5","B4+B5+B6"];
+const TNAME={B1:"ボタン1",B2:"ボタン2",B3:"ボタン3",B4:"ボタン4",B5:"ボタン5",B6:"ボタン6",B7:"ボタン7",B8:"ボタン8",B9:"ボタン9",B10:"ボタン10",START:"スタート",COIN:"コイン"};
+const TSHORT={B1:"S1",B2:"S2",B3:"S3",B4:"K4",B5:"K5",B6:"K6",START:"ST",COIN:"CN"};
+const tname=t=>t.split("+").map(x=>TNAME[x]||x).join("＋");
+function keyFor(pl,t){return t.split("+").map(x=>x.startsWith("SYS:")?((cfg.keys["0"]||{})[x.slice(4)]||"—"):((cfg.keys[pl]||{})[x]||"—")).join("+")}
+const tshort=t=>t.split("+").map(x=>TSHORT[x]||x).join("+");
+const SPEED_LIST=[30,20,15,12,10,8.6,7.5,5,3];
+function patOf(c){if(c.on>0&&c.off>0)return[c.on,c.off];return FRAMES[c.speed]||[2,2]}
+function patOfAlt(a){if(a.pon>0&&a.poff>0)return[a.pon,a.poff];return FRAMES[a.speed]||[2,2]}
+const rateOf=(on,off)=>{const r=60/(on+off);return Math.round(r*10)/10};
+const patStr=(on,off)=>"■".repeat(on)+"□".repeat(off);
+const FUNCS=["UP","DOWN","LEFT","RIGHT","B1","B2","B3","B4","B5","B6","B7","B8","B9","B10","START","COIN"];
+const SYSF=["SERVICE1","SERVICE","TILT","MENU","PAUSE","RESET","FFWD","QSAVE","QLOAD","EXIT"];
+const SYSNAME={SERVICE1:"サービス",SERVICE:"テスト（サービスモード）",TILT:"ティルト",MENU:"MAMEのメニュー",PAUSE:"一時停止",RESET:"リセット",FFWD:"早送り",QSAVE:"クイックセーブ",QLOAD:"クイックロード",EXIT:"MAMEを終了"};
+const SYS_WRITABLE=["SERVICE1","SERVICE","TILT"];
+const MORE_TARGETS=[["ボタン7〜10",["B7","B8","B9","B10"]],["サービス",["SYS:SERVICE1","SYS:SERVICE","SYS:TILT"]],["MAMEの操作",["SYS:MENU","SYS:PAUSE","SYS:RESET","SYS:FFWD","SYS:QSAVE","SYS:QLOAD","SYS:EXIT"]]];
+for(const f of SYSF)TNAME["SYS:"+f]=SYSNAME[f];
+const LAYOUTS={
+  "8b":{name:"1レバー8ボタン＋スタート（コイン別）",rows:[["b1","b2","b3","b4"],["b5","b6","b7","b8"]],stag:true,n:8},
+  "8bs":{name:"1レバー8ボタン＋右端にスタート",rows:[["b1","b2","b3","b4"],["b5","b6","b7","b8"]],stag:true,n:8,startRight:true},
+  "6b":{name:"6ボタン＋スタート・コイン",rows:[["b1","b2","b3"],["b5","b6","b7"]],n:6},
+  "3b":{name:"3ボタン＋スタート・コイン",rows:[["b1","b2","b3"]],n:3},
+  "pad":{name:"ゲームパッド",n:8}
+};
+const ALLB=["b1","b2","b3","b4","b5","b6","b7","b8"];
+const SLOTS={3:["b1","b2","b3"],6:["b1","b2","b3","b5","b6","b7"],8:ALLB};
+const PHYS={ps:{b1:"□",b2:"△",b3:"R1",b4:"L1",b5:"×",b6:"○",b7:"R2",b8:"L2",start:"OPTIONS",coin:"SHARE",ps:"PS",l3:"L3",r3:"R3",touch:"タッチパッド",mute:"ミュート"},
+  xbox:{b1:"X",b2:"Y",b3:"RB",b4:"LB",b5:"A",b6:"B",b7:"RT",b8:"LT",start:"MENU",coin:"VIEW",ps:"ガイド",l3:"LS",r3:"RS",touch:"タッチパッド",mute:"ミュート"}};
+const PADPOS={b8:[14,6],b4:[14,20],b7:[86,6],b3:[86,20],b2:[78,36],b1:[68,51],b6:[88,51],b5:[78,66],coin:[30,23],start:[70,23],touch:[50,27],ps:[50,53],mute:[50,65],l3:[36,80],r3:[64,80]};
+const SLOTNAME=["A","B","C","D","E","F","G","H"];
+
+function N(b,o){return{mode:"normal",target:typeof b==="string"?b:"B"+b,other:!!o,speed:30}}
+function T(b,s,o){return{mode:"turbo",target:"B"+b,other:!!o,speed:s}}
+function O(){return{mode:"off",target:"B1",other:false,speed:30}}
+const GROUPS=[
+  {name:"2ボタンゲーム",items:[
+    {id:"2b1",code:"2B-1",n:3,b:[N(1),N(2),T(1,30)]},
+    {id:"2b2",code:"2B-2",n:3,b:[T(1,30),N(2),N(1)]},
+    {id:"2b3",code:"2B-3",n:6,b:[N(1),N(2),T(1,30),T(1,15),T(1,12),T(1,10)]}]},
+  {name:"3ボタンゲーム",items:[
+    {id:"3b1",code:"3B-1",n:6,b:[T(1,30),T(2,30),T(3,30),N(1),N(2),N(3)]},
+    {id:"3b2",code:"3B-2",n:6,b:[N(1),N(2),N(3),T(1,30),T(2,30),T(3,30)]},
+    {id:"3b3",code:"3B-3",n:3,hidden:true,b:[N(1),N(2),N(3)]}]},
+  {name:"ネオジオ",neo:true,items:[
+    {id:"4b1",code:"4B-1",n:8,b:[N(1),N(2),N(3),N(4),O(),O(),O(),O()]},
+    {id:"4b2",code:"4B-2",n:6,b:[N(1),N(2),N(3),O(),O(),N(4)]},
+    {id:"4b3",code:"4B-3",n:6,b:[N(2),N(3),N(4),N(1),O(),O()]},
+    {id:"4b4",code:"4B-4",n:6,b:[N(1),N(3),N("B1+B3"),N(2),N(4),N("B2+B4")]},
+    {id:"4b5",code:"4B-5",n:6,b:[N(1),N(2),N("B1+B2"),N(3),N(4),N("B3+B4")]},
+    {id:"4b6",code:"4B-6",n:6,b:[N(1),O(),O(),N(2),N(3),N(4)]},
+    {id:"4b7",code:"4B-7",n:8,b:[O(),N(2),N(3),N(4),N(1),O(),O(),O()]}]},
+  {name:"6ボタン標準",items:[
+    {id:"6b1",code:"6B-1",n:6,b:[N(1),N(2),N(3),N(4),N(5),N(6)]}]}
+];
+const PRESETS=GROUPS.flatMap(g=>g.items.map(p=>Object.assign(p,{neo:!!g.neo})));
+const lab=(t,neo)=>t.split("+").map(x=>neo&&/^B[1-4]$/.test(x)?"ABCD"[+x.slice(1)-1]:(/^B\d+$/.test(x)?x.slice(1):x)).join("+");
+
+/* ---------- 状態 ---------- */
+let cfg=null, devs=[], game={rom:""}, active=false, paused=false, keyNames=[], autostart=false;
+let view=null, editKey=null, editManual=false;
+const ui={presetOpen:false,gOpen:{},sel:null,learn:null,mame:null};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+const call=(c,a)=>window.api(c,typeof a==="string"?a:JSON.stringify(a??""));
+
+let pushT=null,pending=false;
+function changed(){pending=true;clearTimeout(pushT);pushT=setTimeout(()=>{call("putConfig",JSON.stringify(cfg)).catch(e=>toast(e,true)).finally(()=>pending=false)},120);renderAll()}
+let tt;function toast(m,err){const t=$("#toast");t.textContent=String(m&&m.message||m);t.className="toast"+(err?" err":"");clearTimeout(tt);tt=setTimeout(()=>t.textContent="",5000)}
+window.toast=toast;
+
+/* ---------- 設定の取り出し ---------- */
+const devCfg=k=>cfg.devices[k];
+function curGame(){return cfg.games[editKey]||cfg.games[COMMON]}
+function prof(k,create){
+  const g=curGame(),d=devCfg(k);
+  let p=g.devices&&g.devices[k];
+  if(p)return p;
+  const base=(editKey!==COMMON&&cfg.games[COMMON].devices[k])||defaultProf(d.layout);
+  if(!create)return base;
+  g.devices=g.devices||{};g.devices[k]=clone(base);return g.devices[k];
+}
+function defaultProf(layout){
+  const p={preset:layout==="3b"?"3b3":"6b1",cfg:{},alt:{on:false,axis:"左右",speed:15}};
+  (layout==="3b"?SLOTS[3]:SLOTS[6]).forEach((k,i)=>p.cfg[k]={mode:"normal",target:"B"+(i+1),other:false,speed:30});
+  p.cfg.start={mode:"normal",target:"START",other:false,speed:30};
+  p.cfg.coin={mode:"normal",target:"COIN",other:false,speed:30};
+  return p;
+}
+const bcfg=(k,pos)=>prof(k).cfg[pos]||O();
+const assignOf=k=>devCfg(k).assign||0;
+const plOf=k=>assignOf(k)||1;
+const XNAMES={X:"X",Y:"Y",A:"A",B:"B",LB:"LB",RB:"RB",LT:"LT",RT:"RT",BACK:"VIEW",START:"MENU",LS:"LS",RS:"RS",GUIDE:"ガイド"};
+function physName(k,pos){
+  const dv=devs.find(x=>x.key===k),ctl=(devCfg(k).map||{})[pos];
+  if(dv&&dv.kind==="xinput"&&ctl&&XNAMES[ctl])return XNAMES[ctl];
+  const d=devCfg(k),t=PHYS[d.layout==="pad"&&d.phys!=="xbox"?"ps":d.phys]||PHYS.ps;
+  if(t[pos])return t[pos];
+  const m=pos.match(/^x_(?:btn)?(.+)$/);if(m)return /^\d+$/.test(m[1])?"ボタン"+m[1]:m[1];
+  return pos;
+}
+function desc(c,pl){
+  if(!c||c.mode==="off")return{t:"なし",k:"—"};
+  const o=c.other?3-pl:pl;
+  const key=keyFor(o,c.target);
+  const [on,off]=patOf(c);
+  return{t:(c.other?o+"P ":"")+tname(c.target)+(c.mode==="turbo"?" 連射"+rateOf(on,off):""),k:`${c.target.startsWith("SYS:")?"":o+"P "}${tname(c.target)} → ${key}`};
+}
+function positions(k){
+  const d=devCfg(k),L=LAYOUTS[d.layout]||LAYOUTS["8b"];
+  const drawn=d.layout==="pad"?Object.keys(PADPOS):[...L.rows.flat(),"start","coin"];
+  const extra=Object.keys(d.map||{}).filter(p=>!drawn.includes(p)).sort();
+  if(d.layout!=="pad"){for(const b of ALLB)if(!drawn.includes(b)&&!extra.includes(b)&&d.map[b])extra.unshift(b)}
+  return{L,drawn,extra:[...new Set(extra)]};
+}
+function connected(){
+  return devs.filter(d=>cfg.devices[d.key]).sort((a,b)=>devCfg(a.key).order-devCfg(b.key).order);
+}
+
+/* ---------- 描画 ---------- */
+function seg(id,opts,cur){return `<div class="seg" id="${id}">${opts.map(([v,l])=>`<button data-v="${esc(v)}" aria-pressed="${String(v)===String(cur)}">${esc(l)}</button>`).join("")}</div>`}
+/* 連射の押す・離すパターン。cur=[on,off] */
+function patPicker(id,cur){
+  const [on,off]=cur,n=on+off;
+  const cells=[];for(let i=0;i<Math.min(n+1,31);i++)cells.push(i<on?`<button class="cell on" data-cell="${i}" title="ここまでを押す長さにする">■</button>`:i<n?`<button class="cell" data-cell="${i}" title="ここまでを離す長さにする">□</button>`:`<button class="cell add" data-cell="${i}" title="離す長さを1つ増やす">＋</button>`);
+  return `<div class="speed" id="${id}">
+    <div class="opts">${SPEED_LIST.map(v=>{const [a,b]=FRAMES[v];const sel=a===on&&b===off;
+      return `<button class="sp" data-v="${v}" aria-pressed="${sel}"><b>${v}</b><span class="pt">${patStr(a,b)}</span></button>`}).join("")}</div>
+    <div class="strip" aria-label="1回分の押す・離す">${cells.join("")}<span class="hint">← 1回分（1マス＝1/60秒）。マスを押して長さを変えられます</span></div>
+    <div class="custom"><span>押している長さ</span><button class="sbtn" data-adj="on:-1" aria-label="押している長さを減らす">−</button><b class="mono">${on}</b><button class="sbtn" data-adj="on:1" aria-label="押している長さを増やす">＋</button>
+      <span>離している長さ</span><button class="sbtn" data-adj="off:-1" aria-label="離している長さを減らす">−</button><b class="mono">${off}</b><button class="sbtn" data-adj="off:1" aria-label="離している長さを増やす">＋</button><span class="hint">マス</span></div>
+    <div class="frames">1秒に ${rateOf(on,off)} 回（${on}マス押して ${off}マス離す、をくり返します）</div></div>`;
+}
+/* パターンの操作を受け取る。set(on,off,speed) */
+function bindPat(id,cur,set){
+  const el=document.getElementById(id);if(!el)return;
+  el.onclick=e=>{
+    const b=e.target.closest("[data-v]");if(b){const v=+b.dataset.v;const [a,o]=FRAMES[v];set(a,o,v,false);return}
+    const cl=e.target.closest("[data-cell]");if(cl){let [on,off]=cur;const i=+cl.dataset.cell;
+      if(i<on){on=Math.max(1,i+1)}else if(i<on+off){off=Math.max(1,i-on+1)}else{off=Math.min(30,off+1)}
+      if(i===0&&cur[0]===1){/* 1マスは減らせない */}
+      set(on,off,rateOf(on,off),true);return}
+    const j=e.target.closest("[data-adj]");if(j){let [on,off]=cur;const [f,dv]=j.dataset.adj.split(":");
+      if(f==="on")on=Math.max(1,Math.min(30,on+ +dv));else off=Math.max(1,Math.min(30,off+ +dv));set(on,off,rateOf(on,off),true)}
+  };
+}
+
+function renderStatus(){
+  const st=$("#status");
+  let pill;
+  if(paused)pill=`<span class="pill warn">一時停止中</span>`;
+  else if(game.rom&&curGameIsDirect())pill=`<span class="pill">このゲームはMAMEが直接読む設定</span>`;
+  else if(active)pill=`<span class="pill on">MAMEに送信中</span>`;
+  else pill=`<span class="pill">${cfg.options.onlyWhenFront?"MAMEが前面にないので待機中":"待機中"}</span>`;
+  st.innerHTML=game.rom?`<span class="dot on"></span><span>起動中</span><span class="rom">${esc(game.rom)}</span><span>${esc(game.title)}</span>${pill}`
+    :`<span class="dot"></span><span>MAMEのゲームは起動していません</span>${pill}`;
+}
+function curGameIsDirect(){const g=cfg.games[game.rom];return !!(g&&g.direct)}
+
+function autoEditKey(){return game.rom&&cfg.games[game.rom]?game.rom:COMMON}
+function renderEditBar(){
+  if(!editManual||!cfg.games[editKey])editKey=autoEditKey();
+  const games=Object.keys(cfg.games).filter(k=>k!==COMMON).sort();
+  const name=k=>k===COMMON?"共通設定（専用設定の無いゲーム）":`${k}${cfg.games[k].title?"　"+cfg.games[k].title:""}${k===game.rom?"（起動中）":""}`;
+  $("#editbar").innerHTML=`<label for="editSel">編集する設定</label>
+    <select id="editSel">${[COMMON,...games].map(k=>`<option value="${esc(k)}" ${k===editKey?"selected":""}>${esc(name(k))}</option>`).join("")}</select>
+    <select id="copySel"><option value="">ほかの設定を読み込む…</option>${[COMMON,...games].filter(k=>k!==editKey).map(k=>`<option value="${esc(k)}">${esc(name(k))}</option>`).join("")}</select>
+    ${editKey!==COMMON?`<button class="sbtn" id="delGame">この設定を削除</button>`:""}`;
+  $("#editSel").onchange=e=>{editKey=e.target.value;editManual=editKey!==autoEditKey();ui.sel=null;renderAll()};
+  $("#copySel").onchange=e=>{const from=e.target.value;if(!from)return;
+    const g=cfg.games[editKey];g.devices=clone(cfg.games[from].devices||{});toast(`「${from===COMMON?"共通設定":from}」の内容を読み込みました`);changed()};
+  const del=$("#delGame");if(del)del.onclick=()=>{
+    if(del.dataset.confirm!=="1"){del.dataset.confirm="1";del.textContent="もう一度押すと削除";setTimeout(()=>{if(del.isConnected){del.dataset.confirm="";del.textContent="この設定を削除"}},3000);return}
+    if(cfg.games[editKey].direct&&cfg.options.mameDir)call("gameDirect",{Dir:cfg.options.mameDir,Rom:editKey,On:false}).catch(()=>{});
+    delete cfg.games[editKey];toast(`${editKey} の設定を削除しました`);editManual=false;changed()};
+
+  // 起動中のゲームの専用設定
+  let n="";
+  if(game.rom&&!cfg.games[game.rom]){
+    n=`<div class="notice"><span><span class="rom">${esc(game.rom)}</span> 専用の設定はまだありません。いまは共通設定で動いています。</span><button class="sbtn pri" id="mkGame">${esc(game.rom)} 専用の設定を作る</button></div>`;
+  }else if(editKey!==COMMON){
+    const g=cfg.games[editKey];
+    const gi=editKey===game.rom&&game.info;
+    n=`<div class="notice">${gi?`<span class="hint">MAMEの情報：${gi.players||"?"}人用・ボタン${gi.buttons||"?"}個${gi.types&&gi.types.some(t=>!/^joy/.test(t))?"・アナログ操作あり（"+gi.types.join(", ")+"）":""}</span>`:""}<label class="switch"><input type="checkbox" id="direct" ${g.direct?"checked":""}> このゲームはMAMEにパッドを直接読ませる（アナログ操作のゲーム用）</label></div>`;
+  }
+  $("#notice").innerHTML=n;
+  const mk=$("#mkGame");if(mk)mk.onclick=()=>{cfg.games[game.rom]={title:game.title,devices:clone(cfg.games[COMMON].devices||{}),direct:false};editKey=game.rom;editManual=false;toast(`${game.rom} 専用の設定を作りました（共通設定をコピー）`);changed()};
+  const dr=$("#direct");if(dr)dr.onchange=e=>{
+    const on=e.target.checked,rom=editKey;
+    call("gameDirect",{Dir:cfg.options.mameDir||"",Rom:rom,On:on}).then(p=>{cfg.games[rom].direct=on;toast(on?`${p} に joystick 1 を書きました`:`${rom} の直接読み込みをやめました`);changed()})
+      .catch(err=>{e.target.checked=!on;toast(err,true)})};
+}
+
+function renderPads(){
+  const el=$("#pads");el.innerHTML="";
+  const list=connected();
+  if(!list.length){el.innerHTML=`<div class="empty">コントローラーがつながっていません。<br>USBでつなぐか、Bluetoothでペアリングすると、ここに自動で出てきます。</div>`;return}
+  if(!view||!list.find(d=>d.key===view))view=list[0].key;
+  list.forEach((d,i)=>{
+    const c=devCfg(d.key);
+    const p=document.createElement("div");p.className="pad"+(c.assign?"":" dis");p.tabIndex=0;p.setAttribute("role","button");
+    p.setAttribute("aria-pressed",view===d.key);
+    p.innerHTML=`<div class="phead"><div class="nm">${esc(d.name)}<span class="conn">${esc(d.conn)}</span>${d.kind==="xinput"?'<span class="conn">XInput</span>':""}</div>
+        <div class="ord"><button data-mv="-1" aria-label="上へ" ${i===0?"disabled":""}>↑</button><button data-mv="1" aria-label="下へ" ${i===list.length-1?"disabled":""}>↓</button></div></div>
+      <div class="ty">ボタン ${d.nButtons}個を認識</div>
+      <div class="pctl">${seg("as-"+i,[[1,"1P"],[2,"2P"],[0,"無効"]],c.assign)}
+        <select data-f="layout" aria-label="コンパネの配置">${Object.entries(LAYOUTS).map(([k,v])=>`<option value="${k}" ${k===c.layout?"selected":""}>${v.name}</option>`).join("")}</select>
+        ${c.layout==="pad"?"":`<select data-f="phys" aria-label="ボタン表記"><option value="ps" ${c.phys!=="xbox"?"selected":""}>PS系の表記</option><option value="xbox" ${c.phys==="xbox"?"selected":""}>Xbox系の表記</option></select>`}
+        <button class="sbtn" data-learn="1">ボタン位置を登録</button></div>`;
+    p.onclick=e=>{
+      const mv=e.target.closest("[data-mv]");
+      if(mv){const j=i+ +mv.dataset.mv,a=devCfg(list[i].key),b=devCfg(list[j].key);[a.order,b.order]=[b.order,a.order];if(a.order===b.order)b.order=a.order+(j>i?1:-1);changed();return}
+      const v=e.target.closest("[data-v]");
+      if(v){c.assign=+v.dataset.v;view=d.key;toast(`${d.name} を ${c.assign?c.assign+"P":"無効"} にしました`);changed();return}
+      if(e.target.closest("[data-learn]")){view=d.key;startLearn(d.key);return}
+      if(e.target.tagName!=="SELECT"&&view!==d.key){view=d.key;ui.sel=null;ui.learn=null;renderAll()}
+    };
+    p.onkeydown=e=>{if(e.key==="Enter"&&e.target===p){view=d.key;ui.sel=null;renderAll()}};
+    p.querySelectorAll("select[data-f]").forEach(s=>s.onchange=e=>{c[s.dataset.f]=e.target.value;view=d.key;ui.sel=null;changed()});
+    el.appendChild(p);
+    if(view===d.key){const b=document.createElement("div");b.className="devbody";b.id="devBody";el.appendChild(b);renderBody(d)}
+  });
+}
+
+function capHTML(k,pos,label,cls){
+  const d=devCfg(k),pl=plOf(k),c=bcfg(k,pos),reg=!!(d.map||{})[pos];
+  const two=c.mode!=="off"&&c.other;
+  const learn=ui.learn&&ui.learn.dev===k&&ui.learn.list[ui.learn.i]===pos;
+  return `<button class="btn ${cls||""} ${learn?"learn":""}" data-pos="${pos}" aria-pressed="${ui.sel===pos}" title="${esc(physName(k,pos)+"："+desc(c,pl).t)}"><span class="ph">${esc(physName(k,pos))}</span><div class="cap ${reg?"c-"+c.mode:"unreg"} ${two?"two":""}" ${two?`data-p="${3-pl}P"`:""} data-cap="${pos}"><span>${esc(label)}</span></div></button>`;
+}
+function slotLabel(k,pos){const n=LAYOUTS[devCfg(k).layout].n,s=SLOTS[n>=8?6:n]||SLOTS[6];const i=s.indexOf(pos);return i>=0?SLOTNAME[i]:""}
+
+function renderBody(d){
+  const k=d.key,c=devCfg(k),pl=plOf(k),{L,drawn,extra}=positions(k),p=prof(k),alt=p.alt||{on:false,axis:"左右",speed:15};
+  let art;
+  if(c.layout==="pad"){
+    art=`<div class="gpad"><div class="dpad" id="dpad"><i class="v"></i><i class="h"></i><i class="u" data-dir="up"></i><i class="d" data-dir="down"></i><i class="l" data-dir="left"></i><i class="r" data-dir="right"></i><small>${alt.on?"交互連打（"+alt.axis+"）":"十字キー"}</small></div>
+      ${drawn.filter(pos=>pos.startsWith("b")||c.map[pos]).map(pos=>{const [x,y]=PADPOS[pos];
+        const cls=pos==="touch"?"pp touch":(["b4","b8","b3","b7","coin","start","ps","mute"].includes(pos)?"pp sm":"pp");
+        return `<div class="pos" style="left:${x}%;top:${y}%">${capHTML(k,pos,pos.startsWith("b")?slotLabel(k,pos):"",cls)}</div>`}).join("")}</div>
+      ${extra.length?`<div class="topstrip">${extra.map(pos=>capHTML(k,pos,"","sys")).join("")}</div>`:""}`;
+  }else{
+    const cols=L.rows[0].length;
+    art=`<div class="topstrip">${[...(L.startRight?[]:["start"]),"coin",...extra].map(pos=>capHTML(k,pos,"","sys")).join("")}</div>
+      <div class="deck ${L.startRight?"sr":""}"><div class="lever"><b id="ball"></b><small>${alt.on?"交互連打（"+alt.axis+"）":"レバー"}</small></div>
+      <div class="rows">${L.rows.map((r,ri)=>`<div class="brow ${L.stag&&ri===0?"stag":""}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${r.map(pos=>capHTML(k,pos,slotLabel(k,pos))).join("")}</div>`).join("")}</div>${L.startRight?`<div class="startcol">${capHTML(k,"start","ST")}</div>`:""}</div>`;
+  }
+  const cur=PRESETS.find(x=>x.id===p.preset);
+  const body=$("#devBody");
+  body.innerHTML=`${!c.assign?`<div class="notice">このコントローラーは「無効」なので、押してもMAMEには入力されません。設定は残ります。</div>`:""}
+    ${ui.learn&&ui.learn.dev===k?`<div class="learnbar"><span>光っている位置のボタンを押してください（${ui.learn.i+1}/${ui.learn.list.length}：${esc(physName(k,ui.learn.list[ui.learn.i]))}）</span><span><button class="sbtn" id="lSkip">この位置は無い</button> <button class="sbtn" id="lStop">やめる</button></span></div>`:""}
+    <div class="board" id="board">${art}</div>
+    <div class="legend"><span><i class="c-normal"></i>単発</span><span><i class="c-turbo"></i>連射</span><span><i class="c-off"></i>なし</span><span><i style="border:1px dashed var(--muted)"></i>位置が未登録</span><span>実物のボタンを押すと光ります</span></div>
+    <button class="bigbtn" id="presetToggle" aria-expanded="${ui.presetOpen}"><span>配置パターンを選ぶ</span><span class="cur">いま：${cur?cur.code:"個別に変更"} ${ui.presetOpen?"▲":"▼"}</span></button>
+    <div class="pgroups" id="presets" ${ui.presetOpen?"":"hidden"}></div>
+    <div id="editorWrap"></div>
+    <details class="fold" id="extFold" ${ui.extOpen?"open":""}><summary>拡張機能</summary>
+      <div class="box">
+        <h4>レバー</h4>
+        <label class="switch"><input type="checkbox" id="stick" ${c.stickAsLever?"checked":""}> 左アナログスティックもレバーとして使う</label>
+        <div class="row"><label class="switch"><input type="checkbox" id="alt" ${alt.on?"checked":""}> 交互連打</label>
+          <select id="altAxis" aria-label="方向"><option ${alt.axis!=="上下"?"selected":""}>左右</option><option ${alt.axis==="上下"?"selected":""}>上下</option></select>
+          <span class="hint">押している間、その向きの2方向を交互に入力します</span></div>
+        ${patPicker("altSp",patOfAlt(alt))}
+        <p class="hint">ボタンを ${3-pl}P として入力する設定は、ボタンを押して開く個別設定の「拡張設定」にあります。</p>
+        <button class="sbtn" id="forget" style="align-self:flex-start">このコントローラーの登録を消す</button>
+      </div></details>
+    <details class="fold" id="alistFold" ${ui.alistOpen?"open":""}><summary>いまの割り当て</summary><div class="alist">${[...drawn,...extra].filter(pos=>c.map[pos]).map(pos=>{const bc=bcfg(k,pos),ds=desc(bc,pl);
+      return `<button class="arow" data-pos="${pos}" aria-pressed="${ui.sel===pos}"><span class="an">${esc(physName(k,pos))}</span><span class="as">${slotLabel(k,pos)}</span><span class="sw c-${bc.mode}"></span><span>${ds.t==="なし"?"未割り当て":esc(ds.t)}</span><span class="ak">${esc(ds.k)}</span></button>`}).join("")}</div></details>`;
+  body.querySelectorAll("[data-pos]").forEach(x=>x.onclick=()=>{ui.sel=ui.sel===x.dataset.pos?null:x.dataset.pos;renderBody(d)});
+  $("#presetToggle").onclick=()=>{ui.presetOpen=!ui.presetOpen;renderBody(d)};
+  $("#extFold").ontoggle=e=>ui.extOpen=e.target.open;
+  $("#alistFold").ontoggle=e=>ui.alistOpen=e.target.open;
+  $("#stick").onchange=e=>{c.stickAsLever=e.target.checked;changed()};
+  const setAlt=f=>{const pp=prof(k,true);pp.alt=pp.alt||{on:false,axis:"左右",speed:15};f(pp.alt);changed()};
+  $("#alt").onchange=e=>setAlt(a=>a.on=e.target.checked);
+  $("#altAxis").onchange=e=>setAlt(a=>a.axis=e.target.value);
+  bindPat("altSp",patOfAlt(alt),(on,off,v,custom)=>setAlt(a=>{a.speed=v;if(custom){a.pon=on;a.poff=off}else{delete a.pon;delete a.poff}}));
+  const fg=$("#forget");fg.onclick=()=>{if(fg.dataset.c!=="1"){fg.dataset.c="1";fg.textContent="もう一度押すと消す（ボタン位置とゲームごとの設定も消えます）";return}
+    call("forgetDevice",k).then(()=>{delete cfg.devices[k];for(const g of Object.values(cfg.games))if(g.devices)delete g.devices[k];toast("登録を消しました。つながっていれば初期設定で出てきます");view=null;renderAll()})};
+  const ls=$("#lSkip");if(ls){ls.onclick=()=>learnNext(null);$("#lStop").onclick=()=>{ui.learn=null;renderBody(d)}}
+  renderPresets(d);renderEditor(d);
+}
+
+function renderPresets(d){
+  const el=$("#presets");if(!ui.presetOpen)return;
+  const k=d.key,n=LAYOUTS[devCfg(k).layout].n,p=prof(k);
+  el.innerHTML="";
+  GROUPS.forEach((g,gi)=>{
+    const items=g.items.filter(x=>x.n<=n&&!x.hidden);if(!items.length)return;
+    const open=!!ui.gOpen[gi];
+    const w=document.createElement("div");w.className="pgroup";
+    w.innerHTML=`<button class="gbtn" aria-expanded="${open}"><span>${g.name}</span><span>${open?"▲":"▼"}</span></button>${open?'<div class="presets"></div>':""}`;
+    w.firstChild.onclick=()=>{ui.gOpen[gi]=!open;renderPresets(d)};
+    if(open)items.forEach(pr=>{const b=document.createElement("button");b.className="preset";
+      b.setAttribute("aria-pressed",p.preset===pr.id);
+      b.innerHTML=`<div><span class="code">${pr.code}</span></div><div class="mini ${pr.n===8?"w4":""}">${pr.b.map(x=>`<i class="c-${x.mode}">${x.mode==="off"?"":lab(x.target,g.neo)}</i>`).join("")}</div>`;
+      b.onclick=()=>applyPreset(k,pr);
+      w.lastChild.appendChild(b)});
+    el.appendChild(w);
+  });
+}
+function applyPreset(k,pr){
+  const p=prof(k,true);
+  for(const b of ALLB)p.cfg[b]=O();
+  SLOTS[pr.n].forEach((pos,i)=>{if(pr.b[i])p.cfg[pos]=clone(pr.b[i])});
+  p.preset=pr.id;ui.sel=null;
+  toast(`${pr.code} を適用しました`);changed();
+}
+
+function renderEditor(d){
+  const el=$("#editorWrap"),k=d.key;
+  if(!ui.sel){el.innerHTML="";return}
+  const pos=ui.sel,pl=plOf(k),c=clone(bcfg(k,pos)),reg=!!devCfg(k).map[pos];
+  const o=c.other?3-pl:pl,keyOf=t=>keyFor(o,t);
+  const gi=game.rom&&editKey===game.rom?game.info:null,nb=gi&&gi.buttons;
+  const {drawn,extra}=positions(k);
+  const others=[...drawn,...extra].filter(p=>p!==pos);
+  const sel=c.target.split("+");
+  const more=MORE_TARGETS.map(([g,ts])=>[g,ts.filter(t=>{
+    if(/^B(7|8|9|10)$/.test(t))return !!(gi&&gi.buttons>6)||c.target===t;
+    if(t==="SYS:SERVICE1"||t==="SYS:SERVICE")return !gi||gi.service||c.target===t;
+    if(t==="SYS:TILT")return !gi||gi.tilt||c.target===t;
+    return true})]).filter(([g,ts])=>ts.length);
+  el.innerHTML=`<div class="editor"><h3><span>${esc(physName(k,pos))} ${slotLabel(k,pos)?"（"+slotLabel(k,pos)+"）":""}</span><span><button class="sbtn" id="closeEd">閉じる</button></span></h3>
+    <div class="row"><label>動作</label>${seg("mode",[["normal","単発"],["turbo","連射"],["off","なし"]],c.mode)}</div>
+    ${c.mode==="off"?"":`<div class="row"><label>割り当て</label><div class="tgts" id="target">${TARGETS.map(t=>{const un=nb&&/^B\d+$/.test(t)&&+t.slice(1)>nb;return `<button data-v="${t}" aria-pressed="${sel.includes(t)}" class="${un?"unused":""}" title="${un?"このゲームでは使われていないボタンです（MAMEの情報）":""}"><b>${TNAME[t]}</b><span>${esc(keyOf(t))}</span></button>`}).join("")}</div></div>
+      <p class="hint">${sel.length>1?`同時押し：${esc(tname(c.target))}`:"2つ以上選ぶと同時押しになります"}</p>
+      ${more.length?`<div class="row"><label></label><select id="targetMore" aria-label="ほかの割り当て"><option value="">ほかの割り当て…</option>${more.map(([g,ts])=>`<optgroup label="${g}">${ts.map(t=>`<option value="${t}" ${c.target===t?"selected":""}>${esc(TNAME[t])}（${esc(keyOf(t))}）</option>`).join("")}</optgroup>`).join("")}</select></div>`:""}`}
+    ${c.mode==="turbo"?`<div class="row"><label>連射</label>${patPicker("speed",patOf(c))}</div>`:""}
+    ${c.mode==="off"?"":`<details class="fold" ${c.other||ui.edExt?"open":""} id="edExt"><summary>拡張設定</summary><div class="box">
+      <div class="row"><label>出力先</label>${seg("other",[["0",pl+"P"],["1",(3-pl)+"P"]],c.other?"1":"0")}<span class="hint">このボタンを ${3-pl}P として入力します</span></div>
+    </div></details>`}
+    <p class="hint">画面のボタンと実物のボタンの位置が違うときは、正しい位置と入れ替えるか、押して登録し直してください。</p>
+    <div class="row swaprow"><label>位置</label>
+      <select id="swapSel" aria-label="入れ替える位置"><option value="">ほかの位置と入れ替える…</option>${others.map(p=>`<option value="${p}">${esc(physName(k,p))}${slotLabel(k,p)?"（"+slotLabel(k,p)+"）":""} と入れ替える</option>`).join("")}</select>
+      <button class="sbtn" id="relearn">${reg?"押して登録し直す":"押して登録する"}</button></div>
+    <p class="hint mono">${esc(desc(c,pl).k)}</p></div>`;
+  const set=f=>{const p=prof(k,true);const cur=p.cfg[pos]||O();f(cur);if(cur.mode==="turbo"&&!cur.speed)cur.speed=30;p.cfg[pos]=cur;p.preset="";changed()};
+  const bind=(id,f)=>{const s=document.getElementById(id);if(s)s.onclick=e=>{const b=e.target.closest("[data-v]");if(b)set(x=>f(x,b.dataset.v))}};
+  bind("mode",(x,v)=>x.mode=v);
+  bind("target",(x,v)=>{let cur=x.target.split("+").filter(t=>TARGETS.includes(t));
+    if(cur.includes(v)){if(cur.length>1)cur=cur.filter(t=>t!==v)}else cur.push(v);
+    x.target=TARGETS.filter(t=>cur.includes(t)).join("+")});
+  bind("other",(x,v)=>x.other=v==="1");
+  const tm=$("#targetMore");if(tm)tm.onchange=e=>{if(e.target.value)set(x=>x.target=e.target.value)};
+  bindPat("speed",patOf(c),(on,off,v,custom)=>set(x=>{x.speed=v;if(custom){x.on=on;x.off=off}else{delete x.on;delete x.off}}));
+  const ex=$("#edExt");if(ex)ex.ontoggle=e=>ui.edExt=e.target.open;
+  $("#closeEd").onclick=()=>{ui.sel=null;renderBody(d)};
+  $("#relearn").onclick=()=>{ui.learn={dev:k,list:[pos],i:0,prev:null};renderBody(d)};
+  $("#swapSel").onchange=e=>{const q=e.target.value;if(!q)return;const m=devCfg(k).map,a=m[pos],b=m[q];
+    if(b===undefined)delete m[pos];else m[pos]=b;if(a===undefined)delete m[q];else m[q]=a;
+    toast(`${physName(k,pos)} と ${physName(k,q)} の実物のボタンを入れ替えました`);changed()};
+}
+
+/* ---------- ボタン位置の登録 ---------- */
+function startLearn(k){
+  const {drawn}=positions(k),d=devCfg(k);
+  const list=d.layout==="pad"?["b1","b2","b3","b4","b5","b6","b7","b8","coin","start"]:drawn;
+  ui.learn={dev:k,list,i:0,prev:null};ui.sel=null;renderAll();
+}
+function learnNext(ctl){
+  const L=ui.learn,d=devCfg(L.dev),pos=L.list[L.i];
+  if(ctl){for(const [p,c] of Object.entries(d.map))if(c===ctl)delete d.map[p];d.map[pos]=ctl}
+  else delete d.map[pos];
+  L.i++;
+  if(L.i>=L.list.length){ui.learn=null;toast("ボタン位置を登録しました")}
+  changed();
+}
+function learnTick(dev){
+  const L=ui.learn;if(!L||L.dev!==dev.key)return;
+  const now=new Set((dev.down||[]).filter(c=>!["up","down","left","right"].includes(c)));
+  if(L.prev){for(const c of now)if(!L.prev.has(c)){L.prev=now;learnNext(c);return}}
+  L.prev=now;
+}
+
+
+/* ---------- 手連射の計測 ---------- */
+const DIRS=["up","down","left","right"];
+const mash={dev:null,hist:[],disp:0,peak:0,last:0,top:"",sel:{}};
+try{Object.assign(mash.sel,JSON.parse(localStorage.getItem("mashSel")||"{}"))}catch(e){}
+function mashCtl(){const p=mash.sel[mash.dev];if(!p||!cfg.devices[mash.dev])return null;return (cfg.devices[mash.dev].map||{})[p]||null}
+function mashSample(d){
+  const t=performance.now();
+  if(mash.dev!==d.key){mash.dev=d.key;mash.hist=[];mash.disp=0;mash.peak=0;mash.top=""}
+  const per=d.presses||{};let total=0;
+  const only=mashCtl();
+  for(const [k,v] of Object.entries(per))if(!DIRS.includes(k)&&(!only||k===only))total+=v;
+  const prev=mash.hist[mash.hist.length-1];
+  if(prev&&total>prev.total)mash.last=t;
+  mash.hist.push({t,total,per});
+  while(mash.hist.length&&t-mash.hist[0].t>2000)mash.hist.shift();
+}
+function mashRate(){
+  const h=mash.hist;if(h.length<2)return 0;
+  const now=h[h.length-1],t=performance.now();
+  if(t-mash.last>1200)return 0;
+  let old=h[0];for(const x of h){if(now.t-x.t<=1000){old=x;break}}
+  const dt=(now.t-old.t)/1000;if(dt<0.25)return 0;
+  // いちばん連打されているボタン
+  let best="",bn=0;const only=mashCtl();for(const [k,v] of Object.entries(now.per)){if(DIRS.includes(k)||(only&&k!==only))continue;const n=v-((old.per||{})[k]||0);if(n>bn){bn=n;best=k}}
+  mash.top=best;
+  const r=(now.total-old.total)/dt;
+  if(dt>=0.8&&r>mash.peak)mash.peak=r;
+  return r;
+}
+function mashTick(){
+  const v=$("#mVal");if(!v)return;
+  const r=mashRate();
+  mash.disp+=(r-mash.disp)*0.12;if(r===0&&mash.disp<0.3)mash.disp=0;
+  v.textContent=mash.disp>0.05?mash.disp.toFixed(1):"—";
+  const bar=$("#mBar");bar.style.width=Math.min(100,mash.disp/30*100)+"%";bar.style.backgroundSize=bar.parentNode.clientWidth+"px 100%";
+  const pk=$("#mPeak");pk.style.display=mash.peak>0?"block":"none";pk.style.left=Math.min(100,mash.peak/30*100)+"%";
+  $("#mMax").textContent=mash.peak>0?mash.peak.toFixed(1):"—";
+  let name="";if(mash.top&&mash.dev&&cfg.devices[mash.dev]){const m=cfg.devices[mash.dev].map||{};const pos=Object.keys(m).find(p=>m[p]===mash.top);name=pos?physName(mash.dev,pos):mash.top}
+  $("#mBtn").textContent=mash.disp>0.05&&name?name+" を連打中":(mashCtl()?"選んだボタンを連打してください":"ボタンを連打すると表示します");
+}
+/* ---------- 光らせる ---------- */
+function lightTick(){
+  const d=devs.find(x=>x.key===view);if(!d||!cfg||!cfg.devices[d.key])return;
+  const down=new Set(d.down||[]),map=devCfg(d.key).map||{},t=performance.now();
+  document.querySelectorAll("#board [data-cap]").forEach(el=>{
+    const pos=el.dataset.cap,c=bcfg(d.key,pos),on=down.has(map[pos]);
+    let lit=on;
+    if(on&&c.mode==="turbo"){
+      if(!el._t0)el._t0=t;const [a,b]=patOf(c);lit=Math.floor((t-el._t0)/(1000/60))%(a+b)<a;
+    }else el._t0=0;
+    el.classList.toggle("lit",lit);
+  });
+  const ball=$("#ball");
+  if(ball){const x=(down.has("right")?1:0)-(down.has("left")?1:0),y=(down.has("down")?1:0)-(down.has("up")?1:0);ball.style.transform=`translate(${x*14}px,${y*14}px)`}
+  document.querySelectorAll("#dpad [data-dir]").forEach(el=>el.classList.toggle("lit",down.has(el.dataset.dir)));
+}
+(function loop(){lightTick();mashTick();requestAnimationFrame(loop)})();
+
+/* ---------- MAMEの設定・全体の設定 ---------- */
+async function loadMame(dir){
+  try{ui.mame=await call("mameInfo",dir??cfg.options.mameDir??"");if(ui.mame.dir&&!cfg.options.mameDir){cfg.options.mameDir=ui.mame.dir;changed()}}
+  catch(e){toast(e,true);ui.mame={dir:dir||"",inis:[]}}
+  renderMame();
+  if($("#keyFold").open)loadKeys();
+}
+function renderMame(){
+  const m=ui.mame||{dir:cfg.options.mameDir||"",inis:null},box=$("#mameBox");
+  const ini=f=>{const ok=f.joystick==="0"&&(!f.hasKbdProvider||f.keyboardprovider==="dinput");
+    return `<div class="ini"><span class="p">${esc(f.path)}</span>
+      <span>joystick <b class="mono">${esc(f.joystick||"（なし）")}</b></span>
+      <span>keyboardprovider <b class="mono">${f.hasKbdProvider?esc(f.keyboardprovider):"（古いMAMEのため無し）"}</b></span>
+      <span class="${ok?"ok":"ng"}">${ok?"このソフト用になっています":"このままだと二重に入力されます"}</span>
+      <span style="margin-left:auto;display:flex;gap:6px">${ok?"":`<button class="sbtn pri" data-apply="${esc(f.path)}">このソフト用に書き換える</button>`}
+      ${f.hasBackup?`<button class="sbtn" data-restore="${esc(f.path)}">元に戻す</button>`:""}</span></div>`};
+  box.innerHTML=`<p class="hint">このソフトを使うときは、MAMEがパッドを直接読まないようにする必要があります（joystick を 0、新しいMAMEは keyboardprovider も dinput に）。書き換える前に元のファイルを残します。</p>
+    <div class="row"><label style="width:auto">MAMEのフォルダ</label><input type="text" id="mameDir" value="${esc(m.dir||"")}" placeholder="例: C:\\MAME"><button class="sbtn" id="mameLoad">読み込む</button></div>
+    ${m.runningDir?`<p class="hint">起動中のMAME：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
+    <div class="inis">${m.inis==null?"":(m.inis.length?m.inis.map(ini).join(""):`<p class="hint ng">このフォルダに mame.ini が見つかりません。MAMEのフォルダで「mame -createconfig」を一度実行すると作られます。</p>`)}</div>
+`;
+  $("#mameLoad").onclick=()=>{cfg.options.mameDir=$("#mameDir").value.trim();changed();loadMame(cfg.options.mameDir)};
+  const ur=$("#useRunning");if(ur)ur.onclick=()=>{cfg.options.mameDir=m.runningDir;changed();loadMame(m.runningDir)};
+  box.querySelectorAll("[data-apply]").forEach(b=>b.onclick=()=>call("mameApply",{Dir:m.dir,Path:b.dataset.apply}).then(()=>{toast("書き換えました");loadMame(m.dir)}).catch(e=>toast(e,true)));
+  box.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>call("mameRestore",{Dir:m.dir,Path:b.dataset.restore}).then(()=>{toast("元に戻しました");loadMame(m.dir)}).catch(e=>toast(e,true)));
+}
+
+/* ---------- キーボードの設定 ---------- */
+const FNAME={UP:"上",DOWN:"下",LEFT:"左",RIGHT:"右",B1:"ボタン1",B2:"ボタン2",B3:"ボタン3",B4:"ボタン4",B5:"ボタン5",B6:"ボタン6",B7:"ボタン7",B8:"ボタン8",B9:"ボタン9",B10:"ボタン10",START:"スタート",COIN:"コイン"};
+const UIKEYS={ESC:"終了",TAB:"メニュー",F5:"一時停止",TILDE:"画面表示",F1:"",F2:"",F3:"リセット",F4:"",F6:"",F7:"",F8:"",F9:"",F10:"",F11:"",F12:"",INSERT:"早送り"};
+const DEFKEYS={"1":{UP:"UP",DOWN:"DOWN",LEFT:"LEFT",RIGHT:"RIGHT",B1:"LCONTROL",B2:"LALT",B3:"SPACE",B4:"LSHIFT",B5:"Z",B6:"X",B7:"C",B8:"V",B9:"B",B10:"N",START:"1",COIN:"5"},
+  "2":{UP:"R",DOWN:"F",LEFT:"D",RIGHT:"G",B1:"A",B2:"S",B3:"Q",B4:"W",B5:"E",B6:"H",B7:"J",B8:"K",B9:"L",B10:"U",START:"2",COIN:"6"},
+  "0":{SERVICE1:"9",SERVICE:"F2",TILT:"T",MENU:"TAB",PAUSE:"F5",RESET:"F3",FFWD:"INSERT",QSAVE:"LSHIFT+F6",QLOAD:"LSHIFT+F7",EXIT:"ESC"}};
+async function loadKeys(){
+  const dir=cfg.options.mameDir||"";
+  if(!dir){ui.mk=null;renderKeys();return}
+  try{ui.mk=await call("mameKeys",dir)}catch(e){ui.mk=null;toast(e,true)}
+  renderKeys();
+}
+function renderKeys(){
+  const box=$("#keyBox"),mk=ui.mk,dir=cfg.options.mameDir||"";
+  cfg.keys["0"]=cfg.keys["0"]||clone(DEFKEYS["0"]);for(const pl of ["1","2","0"])for(const f of Object.keys(DEFKEYS[pl]))if(cfg.keys[pl][f]===undefined)cfg.keys[pl][f]=DEFKEYS[pl][f];
+  const all=[];for(const pl of ["1","2"])for(const f of FUNCS)all.push(cfg.keys[pl][f]);for(const f of SYSF)all.push(cfg.keys["0"][f]);
+  const dup=k=>k&&all.filter(x=>x===k).length>1;
+  let diff=0;
+  const cell=(pl,f)=>{const k=cfg.keys[pl][f],mame=mk&&mk.keys[pl]?mk.keys[pl][f]:null,ok=mk&&mame===k;if(mk&&!ok)diff++;
+    const warn=dup(k)?"ほかと重複":(pl!=="0"&&k in UIKEYS?`MAMEの${UIKEYS[k]||"操作"}キー`:"");
+    return `<div class="kc"><select data-key="${pl}:${f}" aria-label="${pl==="0"?SYSNAME[f]:pl+"P "+FNAME[f]}">${[...new Set([k,...keyNames])].map(n=>`<option ${k===n?"selected":""}>${n}</option>`).join("")}</select>
+      ${mk?`<span class="${ok?"ok":"ng"}">${ok?"✓":"MAME："+(mame||"なし")}</span>`:""}${warn?`<span class="ng">⚠ ${warn}</span>`:""}</div>`};
+  const rows=FUNCS.map(f=>`<b>${FNAME[f]}</b>${cell("1",f)}${cell("2",f)}`).join("");
+  const srows=SYSF.map(f=>`<b>${SYSNAME[f]}</b>${cell("0",f)}<span class="hint">${SYS_WRITABLE.includes(f)?"":"書き込みはしません"}</span>`).join("");
+  box.innerHTML=`<p class="hint">このソフトがMAMEに送るキーと、MAMEが受け付けるキーを合わせます。「MAMEに書き込む」を押すと、MAMEの cfg\\default.cfg に書き込みます（MAMEの「入力設定（全体）」と同じ場所です）。</p>
+    ${!dir?`<p class="hint ng">先に「MAMEの設定」でMAMEのフォルダを指定してください。</p>`:""}
+    <div style="overflow-x:auto"><div class="keys"><b></b><b>1P</b><b>2P</b>${rows}</div></div>
+    <h4>共通・MAMEの操作</h4>
+    <p class="hint">MAMEの操作キー（メニュー・一時停止など）はMAMEのバージョンで初期値が違います。ここではMAME 0.289 の初期値にしています。古いMAMEでは「MAMEの設定を読み込む」か、手で合わせてください。</p>
+    <div style="overflow-x:auto"><div class="keys">${srows}</div></div>
+    ${mk?(diff?`<p class="ng">MAMEの設定と違うキーが ${diff} か所あります。このままだと、その入力はMAMEに届きません。</p>`:`<p class="ok">MAMEの設定と一致しています。</p>`):""}
+    ${mk&&mk.overrides&&mk.overrides.length?`<p class="hint ng">次のゲームは、MAME側でゲーム別にキーを変えているので、そちらが優先されます：<span class="mono">${mk.overrides.map(esc).join(", ")}</span>（MAMEのゲーム中メニューの「入力設定（このゲーム）」で戻せます）</p>`:""}
+    <div class="row">
+      <button class="sbtn pri" id="kWrite" ${dir?"":"disabled"}>MAMEに書き込む</button>
+      <button class="sbtn" id="kRead" ${dir?"":"disabled"}>MAMEの設定を読み込む</button>
+      <button class="sbtn" id="kDef">初期値に戻す</button>
+      ${mk&&mk.hasBackup?`<button class="sbtn" id="kRestore">MAMEの default.cfg を元に戻す</button>`:""}
+    </div>
+    ${mk?`<p class="hint mono">${esc(mk.path)}${mk.exists?"":"（まだありません。書き込むと作ります）"}</p>`:""}`;
+  box.querySelectorAll("[data-key]").forEach(s=>s.onchange=()=>{const [pl,f]=s.dataset.key.split(":");cfg.keys[pl][f]=s.value;changed();renderKeys()});
+  $("#kWrite").onclick=()=>call("mameKeysWrite",{Dir:dir,Keys:cfg.keys}).then(p=>{toast("MAMEに書き込みました："+p);loadKeys()}).catch(e=>toast(e,true));
+  $("#kRead").onclick=()=>{if(!mk)return;for(const pl of ["1","2","0"])for(const f of (pl==="0"?SYSF:FUNCS))if(mk.keys[pl]&&mk.keys[pl][f])cfg.keys[pl][f]=mk.keys[pl][f];toast("MAMEのキー設定を読み込みました");changed();renderKeys()};
+  $("#kDef").onclick=()=>{cfg.keys=clone(DEFKEYS);toast("初期値に戻しました。MAMEにも反映するには「MAMEに書き込む」を押してください");changed();renderKeys()};
+  const kr=$("#kRestore");if(kr)kr.onclick=()=>call("mameKeysRestore",{Dir:dir}).then(()=>{toast("default.cfg を元に戻しました");loadKeys()}).catch(e=>toast(e,true));
+}
+$("#keyFold").ontoggle=e=>{if(e.target.open)loadKeys()};
+
+function renderMash(){
+  const box=$("#mashBox");if(box.hidden)return;
+  const list=connected();
+  if(!mash.target||!list.find(d=>d.key===mash.target))mash.target=view||(list[0]&&list[0].key)||null;
+  const k=mash.target;
+  if(!k){box.innerHTML=`<div class="box"><h2>手連射測定</h2><p class="hint">コントローラーをつなぐと測れます。</p></div>`;return}
+  const c=devCfg(k),{drawn,extra}=positions(k);
+  const opts=[...drawn,...extra].filter(pos=>c.map[pos]).sort((x,y)=>{const a=slotLabel(k,x)||"~",b=slotLabel(k,y)||"~";return a<b?-1:a>b?1:0});
+  box.innerHTML=`<div class="box"><div class="row" style="justify-content:space-between"><h2 style="margin:0">手連射測定</h2><button class="sbtn" id="mClose">閉じる</button></div>
+    <div class="row"><select id="mDev" aria-label="コントローラー">${list.map(d=>`<option value="${esc(d.key)}" ${d.key===k?"selected":""}>${esc(d.name)}</option>`).join("")}</select>
+      <select id="mSel" aria-label="測るボタン"><option value="">全部のボタン</option>${opts.map(pos=>`<option value="${pos}" ${mash.sel[k]===pos?"selected":""}>${esc(physName(k,pos))}${slotLabel(k,pos)?"（"+slotLabel(k,pos)+"）":""}</option>`).join("")}</select></div>
+    <div class="meter"><div class="mnum"><span class="mlab">手連射</span><b id="mVal">—</b><span class="unit">発/秒</span></div>
+      <div class="mgauge"><div class="mbar" id="mBar"></div><div class="mpeak" id="mPeak"></div>${[10,15,20,30].map(v=>`<i style="left:${v/30*100}%"><span>${v}</span></i>`).join("")}</div>
+      <div class="mside"><span id="mBtn" class="hint"></span><span class="hint">最高 <b id="mMax" class="mono">—</b></span><button class="sbtn" id="mReset">リセット</button></div></div>
+    <p class="hint">直近1秒に押した回数です。数字はなめらかに動くよう、少し遅れて追いかけます。</p></div>`;
+  const reset=()=>{mash.peak=0;mash.disp=0;mash.hist=[]};
+  $("#mReset").onclick=reset;
+  $("#mClose").onclick=()=>{box.hidden=true};
+  $("#mDev").onchange=e=>{mash.target=e.target.value;reset();renderMash()};
+  $("#mSel").onchange=e=>{mash.sel[k]=e.target.value;try{localStorage.setItem("mashSel",JSON.stringify(mash.sel))}catch(_){}reset()};
+}
+$("#mashLink").onclick=()=>{const b=$("#mashBox");b.hidden=!b.hidden;renderMash();if(!b.hidden)b.scrollIntoView({block:"nearest"})};
+function renderOpts(){
+  $("#optBox").innerHTML=`<label class="switch"><input type="checkbox" id="front" ${cfg.options.onlyWhenFront?"checked":""}> MAMEの画面が前面にあるときだけ送る（おすすめ）</label>
+    <label class="switch"><input type="checkbox" id="auto" ${autostart?"checked":""}> Windowsの起動時に常駐させる（画面は出さない）</label>
+    <label class="switch"><input type="checkbox" id="pause" ${paused?"checked":""}> 一時停止する</label>
+    <div class="row"><button class="sbtn" id="quit">終了する</button><span class="hint">設定ファイル：このソフトと同じフォルダの shotpanel.json</span></div>`;
+  $("#front").onchange=e=>{cfg.options.onlyWhenFront=e.target.checked;changed()};
+  $("#auto").onchange=e=>call("autostart",e.target.checked?"1":"0").then(()=>autostart=e.target.checked).catch(err=>{e.target.checked=!e.target.checked;toast(err,true)});
+  $("#pause").onchange=e=>{paused=e.target.checked;call("pause",paused?"1":"0");renderStatus()};
+  $("#quit").onclick=()=>call("quit");
+}
+$("#mameFold").ontoggle=e=>{if(e.target.open)loadMame()};
+$("#hideBtn").onclick=()=>call("hide");
+
+function renderAll(){
+  if(!cfg)return;
+  renderStatus();renderEditBar();renderPads();
+  if($("#optFold").open)renderOpts();
+  renderMash();
+}
+$("#optFold").ontoggle=e=>{if(e.target.open)renderOpts()};
+
+/* ---------- 本体からの通知 ---------- */
+let lastRom=null,lastDevKeys="";
+window.onState=st=>{
+  devs=st.devices||[];active=st.active;paused=st.paused;
+  const g=st.game||{rom:""};
+  const romChanged=g.rom!==lastRom;game=g;
+  if(st.config&&!pending){
+    const keep=cfg&&cfg.options;cfg=st.config;
+    cfg.games=cfg.games||{};cfg.games[COMMON]=cfg.games[COMMON]||{devices:{}};
+    for(const g of Object.values(cfg.games))g.devices=g.devices||{};
+    for(const d of Object.values(cfg.devices||{}))d.map=d.map||{};
+    cfg.options=cfg.options||keep||{onlyWhenFront:true};
+  }
+  if(!cfg)return;
+  const dk=devs.map(d=>d.key).join(",");
+  for(const d of devs)learnTick(d);
+  if(!$("#mashBox").hidden){const vd=devs.find(x=>x.key===(mash.target||view));if(vd)mashSample(vd)}
+  if(romChanged){lastRom=g.rom;if(!editManual)ui.sel=null;editManual=false}
+  if(st.config||romChanged||dk!==lastDevKeys){lastDevKeys=dk;renderAll()}else renderStatus();
+};
+window.addEventListener("load",()=>call("init").then(r=>{keyNames=r.keyNames||[];autostart=r.autostart}).catch(e=>toast(e,true)));
+document.addEventListener("contextmenu",e=>{if(!e.target.closest("input,textarea"))e.preventDefault()});
+</script>
+</body>
+</html>
