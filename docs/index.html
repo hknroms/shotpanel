@@ -145,6 +145,11 @@ function verHtml(v, open) {
 })();
 </script>
 
+<script>
+// ログインの扉。false にすると誰でも見られる（仕組みは下に残してある）。true にすると gradius3 と同じ承認制になる。
+window.REQUIRE_LOGIN = false;
+if (!window.REQUIRE_LOGIN) { document.getElementById('auth-gate').style.display = 'none'; document.getElementById('site-content').style.display = 'block'; }
+</script>
 <script type="module">
 // Firebase Web SDK（GitHub Pages向け。npm不要）
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
@@ -186,6 +191,11 @@ function showSite(user) {
   memberBar.style.display = 'block';
   memberName.textContent = (user.displayName || user.email || '利用者') + ' さん';
 }
+const REQUIRE_LOGIN = window.REQUIRE_LOGIN;
+if (!REQUIRE_LOGIN) {
+  gate.style.display = 'none';
+  site.style.display = 'block';
+} else {
 loginButton.addEventListener('click', async () => {
   loginButton.disabled = true;
   try { await signInWithPopup(auth, provider); }
@@ -228,6 +238,7 @@ onAuthStateChanged(auth, async (user) => {
     if (sequence === authSequence) showGate('利用申請を登録できませんでした。Firestoreのルールを確認してください。\n' + e.code, false, true);
   }
 });
+}
 </script>
 </body>
 </html>
