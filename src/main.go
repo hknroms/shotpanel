@@ -25,10 +25,10 @@ var indexHTML string
 const appName = "連射パネル設定"
 
 type gameInfo struct {
-	Rom   string `json:"rom"`
-	Title string `json:"title"`
-	Exe   string `json:"exe"`
-	Front bool   `json:"front"`
+	Rom   string           `json:"rom"`
+	Title string           `json:"title"`
+	Exe   string           `json:"exe"`
+	Front bool             `json:"front"`
 	Info  *core.GameInputs `json:"info,omitempty"`
 	pid   uint32
 }
@@ -360,7 +360,9 @@ func (a *App) flushSave() {
 	err := a.cfg.Save()
 	a.cfg.Unlock()
 	if err != nil && a.wv != nil {
-		a.wv.Dispatch(func() { a.wv.Eval(fmt.Sprintf("window.toast && toast(%q)", "設定を保存できませんでした: "+err.Error())) })
+		a.wv.Dispatch(func() {
+			a.wv.Eval(fmt.Sprintf("window.toast && toast(%q)", "設定を保存できませんでした: "+err.Error()))
+		})
 	}
 }
 
@@ -453,6 +455,54 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		}
 		ch, err := core.ApplyMame(p.Path)
 		return ch, err
+	case "pickFolder":
+		dir, err := win.PickFolder(a.hwnd, "MAMEのフォルダを選んでください", arg)
+		if err == win.ErrCanceled {
+			return "", nil
+		}
+		return dir, err
+	case "mameSetup", "mameUndo":
+		var p struct{ Dir string }
+		json.Unmarshal([]byte(arg), &p)
+		if p.Dir == "" {
+			return nil, fmt.Errorf("先にMAMEのフォルダを選んでください")
+		}
+		if err := a.mameNotRunning(); err != nil {
+			return nil, err
+		}
+		inis := core.FindInis(p.Dir)
+		if len(inis) == 0 {
+			return nil, fmt.Errorf("このフォルダに mame.ini が見つかりません。MAMEのフォルダで「mame -createconfig」を一度実行すると作られます")
+		}
+		var done []string
+		if cmd == "mameUndo" {
+			for _, f := range inis {
+				if f.HasBackup {
+					if err := core.RestoreMame(f.Path); err != nil {
+						return nil, err
+					}
+					done = append(done, f.Path)
+				}
+			}
+			if err := core.RestoreMameKeys(p.Dir); err == nil {
+				done = append(done, "default.cfg")
+			}
+			return done, nil
+		}
+		for _, f := range inis {
+			if _, err := core.ApplyMame(f.Path); err != nil {
+				return nil, err
+			}
+			done = append(done, f.Path)
+		}
+		a.cfg.Lock()
+		keys := a.cfg.Keys
+		a.cfg.Unlock()
+		cp, err := core.WriteMameKeys(p.Dir, keys)
+		if err != nil {
+			return nil, err
+		}
+		return append(done, cp), nil
 	case "mameKeys":
 		if arg == "" {
 			return nil, fmt.Errorf("先にMAMEのフォルダを指定してください")

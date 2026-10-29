@@ -1,6 +1,29 @@
 {
  "versions": [
   {
+   "version": "0.9",
+   "date": "2026-10-29",
+   "title": "「はじめにやること」の案内／フォルダを選ぶ画面／二重に動くのを防ぐ",
+   "changes": [
+    "画面の一番上に「はじめにやること」を追加（フォルダを選ぶ → MAMEをこのソフト用にする → コントローラーを確かめる → ゲームで試す）。終わった項目に✓が付き、全部済むと消える",
+    "MAMEのフォルダを、Windowsのフォルダを選ぶ画面（「参照…」）で選べるようにした。入力欄に直接打ち込めなかったのも直した",
+    "「MAMEをこのソフト用にする」ボタン1つで、mame.ini（keyboardprovider を dinput に）と、MAMEの入力の割り当て（ボタンとレバーをキーボードだけに）をまとめて書き換えるようにした。MAMEがコントローラーも直接読んで二重に動くのを防ぐ",
+    "joystick は 1 のまま（コントローラーはMAMEに見えたまま）になり、アナログ操作のゲームもそのまま遊べる。「このゲームはMAMEにパッドを直接読ませる」は不要になったので外した",
+    "mame.ini が見つからないとき・すでに設定済みのとき・フォルダを選んでいないときの表示を分かりやすくした"
+   ],
+   "file": "files/ShotPanel_v0.9.zip",
+   "en": {
+    "title": "Getting-started guide / folder picker / no more double input",
+    "changes": [
+     "Added a \"Getting started\" checklist at the top (choose the folder → set up MAME for ShotPanel → check controllers → try a game). Finished steps get a ✓ and the list disappears when all are done",
+     "The MAME folder can be chosen with the Windows folder picker (\"Browse…\"). Fixed typing into the folder field",
+     "One button now sets up MAME for ShotPanel: mame.ini (keyboardprovider dinput) and MAME's input assignments (buttons and lever keyboard-only). This stops MAME from also reading the controller and moving twice",
+     "joystick stays 1 (MAME still sees the controller), so games with analog controls keep working. The \"let MAME read the pad directly for this game\" option is no longer needed and was removed",
+     "Clearer messages when mame.ini is not found, when MAME is already set up, and when no folder is chosen"
+    ]
+   }
+  },
+  {
    "version": "0.8",
    "date": "2026-10-29",
    "title": "レバー（十字キー）の方向ごとの割り当て",

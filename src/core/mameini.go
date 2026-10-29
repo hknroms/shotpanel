@@ -16,6 +16,7 @@ type IniFile struct {
 	HasKbdProvider   bool   `json:"hasKbdProvider"`
 	Joystick         string `json:"joystick"`
 	HasBackup        bool   `json:"hasBackup"`
+	IsReady          bool   `json:"ready"`
 }
 
 const backupSuffix = ".shotpanel-backup"
@@ -50,6 +51,7 @@ func FindInis(dir string) []IniFile {
 		f.Joystick = vals["joystick"]
 		_, err = os.Stat(p + backupSuffix)
 		f.HasBackup = err == nil
+		f.IsReady = f.Ready()
 		// MAMEのオプションらしい行が無いものは除外（フロントエンドの ini など）
 		if _, ok := vals["joystick"]; !ok && !f.HasKbdProvider {
 			if _, ok2 := vals["rompath"]; !ok2 {
@@ -171,11 +173,16 @@ func SetIni(path string, vals map[string]string, onlyExisting map[string]bool, b
 	return changed, os.Rename(tmp, path)
 }
 
-// ApplyMame は mame.ini を「このソフト用」にする（joystick 0 / keyboardprovider dinput）。
+// ApplyMame は mame.ini を「このソフト用」にする。
+// keyboardprovider を dinput に（このソフトが送るキーを新しいMAMEでも読めるように）。
+// joystick は 1 のまま（コントローラーはMAMEに見えたまま。ボタンとレバーの割り当ては default.cfg でキーボードだけにする。アナログ操作は使える）。
 func ApplyMame(ini string) ([]string, error) {
-	return SetIni(ini, map[string]string{"joystick": "0", "keyboardprovider": "dinput"},
+	return SetIni(ini, map[string]string{"joystick": "1", "keyboardprovider": "dinput"},
 		map[string]bool{"keyboardprovider": true, "joystick": true}, true)
 }
+
+// IniReady は mame.ini がこのソフト用になっているか。
+func (f IniFile) Ready() bool { return !f.HasKbdProvider || f.KeyboardProvider == "dinput" }
 
 // RestoreMame はバックアップから戻す。
 func RestoreMame(ini string) error {

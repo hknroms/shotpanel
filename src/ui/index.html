@@ -40,6 +40,14 @@ input[type=text]{min-width:0;flex:1}
 .pill.warn{border-color:var(--warn);color:var(--warn)}
 .editbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .editbar label{font-size:12px;color:var(--muted)}
+.setup{background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.setup h2{margin:0;color:var(--accent)}
+.step{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed var(--line)}
+.step .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;background:var(--panel2);border:1px solid var(--line)}
+.step.done .n{background:var(--p2);border-color:var(--p2);color:#111}
+.step.cur .n{background:var(--accent);border-color:var(--accent);color:#111}
+.step.done .t{color:var(--muted)}
+.step .t small{display:block;color:var(--muted);font-size:11.5px}
 .notice{background:var(--panel2);border:1px dashed var(--muted);border-radius:8px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 
 /* コントローラー */
@@ -211,6 +219,9 @@ input[type=text]{min-width:0;flex:1}
 <div class="wrap">
   <div>
     <div class="status" id="status"></div>
+  </div>
+  <div id="setup"></div>
+  <div>
   </div>
   <div class="editbar" id="editbar"></div>
   <div id="notice"></div>
@@ -418,7 +429,7 @@ function renderEditBar(){
   }else if(editKey!==COMMON){
     const g=cfg.games[editKey];
     const gi=editKey===game.rom&&game.info;
-    n=`<div class="notice">${gi?`<span class="hint">MAMEの情報：${gi.players||"?"}人用・ボタン${gi.buttons||"?"}個${gi.types&&gi.types.some(t=>!/^joy/.test(t))?"・アナログ操作あり（"+gi.types.join(", ")+"）":""}</span>`:""}<label class="switch"><input type="checkbox" id="direct" ${g.direct?"checked":""}> このゲームはMAMEにパッドを直接読ませる（アナログ操作のゲーム用）</label></div>`;
+    n=`<div class="notice">${gi?`<span class="hint">MAMEの情報：${gi.players||"?"}人用・ボタン${gi.buttons||"?"}個${gi.types&&gi.types.some(t=>!/^joy/.test(t))?"・アナログ操作あり（"+gi.types.join(", ")+"）":""}</span>`:""}</div>`;if(!gi)n="";
   }
   $("#notice").innerHTML=n;
   const mk=$("#mkGame");if(mk)mk.onclick=()=>{cfg.games[game.rom]={title:game.title,devices:clone(cfg.games[COMMON].devices||{}),direct:false};editKey=game.rom;editManual=false;toast(`${game.rom} 専用の設定を作りました（共通設定をコピー）`);changed()};
@@ -711,30 +722,81 @@ function lightTick(){
 (function loop(){lightTick();mashTick();requestAnimationFrame(loop)})();
 
 /* ---------- MAMEの設定・全体の設定 ---------- */
-async function loadMame(dir){
-  try{ui.mame=await call("mameInfo",dir??cfg.options.mameDir??"");if(ui.mame.dir&&!cfg.options.mameDir){cfg.options.mameDir=ui.mame.dir;changed()}}
-  catch(e){toast(e,true);ui.mame={dir:dir||"",inis:[]}}
-  renderMame();
-  if($("#keyFold").open)loadKeys();
+async function loadMame(dir,quiet){
+  const d=dir??cfg.options.mameDir??"";
+  try{ui.mame=await call("mameInfo",d);if(ui.mame.dir&&!cfg.options.mameDir){cfg.options.mameDir=ui.mame.dir;changed()}}
+  catch(e){if(!quiet)toast(e,true);ui.mame={dir:d,inis:null,error:String(e&&e.message||e)}}
+  if(cfg.options.mameDir){try{ui.mk=await call("mameKeys",cfg.options.mameDir)}catch(e){ui.mk=null}}else ui.mk=null;
+  renderMame();renderSetup();
+  if($("#keyFold").open)renderKeys();
+}
+async function pickMameDir(){
+  try{const d=await call("pickFolder",cfg.options.mameDir||"");if(!d)return;cfg.options.mameDir=d;changed();await loadMame(d);
+    if(ui.mame&&ui.mame.inis&&ui.mame.inis.length)toast("MAMEのフォルダを設定しました");}
+  catch(e){toast(e,true)}
+}
+function mameState(){
+  const m=ui.mame,mk=ui.mk;
+  if(!cfg.options.mameDir)return"nodir";
+  if(!m||m.inis==null)return m&&m.error?"baddir":"loading";
+  if(!m.inis.length)return"noini";
+  const iniOk=m.inis.every(f=>f.ready);
+  const keysOk=mk&&mk.padBound&&mk.padBound.length===0&&keysDiff()===0;
+  return iniOk&&keysOk?"ready":"todo";
+}
+function keysDiff(){const mk=ui.mk;if(!mk)return 99;let n=0;for(const pl of ["1","2"])for(const f of FUNCS)if((mk.keys[pl]||{})[f]!==cfg.keys[pl][f])n++;return n}
+async function doSetup(){
+  try{const r=await call("mameSetup",{Dir:cfg.options.mameDir});toast("MAMEをこのソフト用にしました（"+r.length+"か所）");await loadMame()}
+  catch(e){toast(e,true)}
 }
 function renderMame(){
-  const m=ui.mame||{dir:cfg.options.mameDir||"",inis:null},box=$("#mameBox");
-  const ini=f=>{const ok=f.joystick==="0"&&(!f.hasKbdProvider||f.keyboardprovider==="dinput");
-    return `<div class="ini"><span class="p">${esc(f.path)}</span>
-      <span>joystick <b class="mono">${esc(f.joystick||"（なし）")}</b></span>
+  const m=ui.mame||{dir:cfg.options.mameDir||"",inis:null},box=$("#mameBox"),st=mameState(),mk=ui.mk,running=!!game.rom;
+  const ini=f=>`<div class="ini"><span class="p">${esc(f.path)}</span>
       <span>keyboardprovider <b class="mono">${f.hasKbdProvider?esc(f.keyboardprovider):"（古いMAMEのため無し）"}</b></span>
-      <span class="${ok?"ok":"ng"}">${ok?"このソフト用になっています":"このままだと二重に入力されます"}</span>
-      <span style="margin-left:auto;display:flex;gap:6px">${ok?"":`<button class="sbtn pri" data-apply="${esc(f.path)}">このソフト用に書き換える</button>`}
-      ${f.hasBackup?`<button class="sbtn" data-restore="${esc(f.path)}">元に戻す</button>`:""}</span></div>`};
-  box.innerHTML=`<p class="hint">このソフトを使うときは、MAMEがパッドを直接読まないようにする必要があります（joystick を 0、新しいMAMEは keyboardprovider も dinput に）。書き換える前に元のファイルを残します。</p>
-    <div class="row"><label style="width:auto">MAMEのフォルダ</label><input type="text" id="mameDir" value="${esc(m.dir||"")}" placeholder="例: C:\\MAME"><button class="sbtn" id="mameLoad">読み込む</button></div>
-    ${m.runningDir?`<p class="hint">起動中のMAME：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
-    <div class="inis">${m.inis==null?"":(m.inis.length?m.inis.map(ini).join(""):`<p class="hint ng">このフォルダに mame.ini が見つかりません。MAMEのフォルダで「mame -createconfig」を一度実行すると作られます。</p>`)}</div>
-`;
-  $("#mameLoad").onclick=()=>{cfg.options.mameDir=$("#mameDir").value.trim();changed();loadMame(cfg.options.mameDir)};
+      <span>joystick <b class="mono">${esc(f.joystick||"（なし）")}</b></span>
+      <span class="${f.ready?"ok":"ng"}">${f.ready?"✓":"このままだと、このソフトのキーが届きません"}</span></div>`;
+  let status="";
+  if(st==="nodir")status=`<p class="hint">「参照…」を押して、MAMEのフォルダ（mame.exe がある所）を選んでください。</p>`;
+  else if(st==="baddir")status=`<p class="ng">${esc(m.error)}</p>`;
+  else if(st==="noini")status=`<p class="ng">このフォルダに mame.ini が見つかりません（mame.ini・ini\\mame.ini などを探しました）。MAMEのフォルダで「mame -createconfig」を一度実行すると作られます。違うフォルダなら、選び直してください。</p>`;
+  else if(st==="ready")status=`<p class="ok">MAMEはこのソフト用になっています。コントローラーはMAMEに見えたままで、ボタンとレバーはこのソフトのキーだけを受け付けます。</p>`;
+  else if(st==="todo")status=`<p class="ng">まだこのソフト用になっていません。${mk&&mk.padBound&&mk.padBound.length?`MAMEがコントローラーを直接読む割り当てが ${mk.padBound.length} か所残っていて、二重に動きます。`:""}下のボタンを押してください。</p>`;
+  const hasBackup=(m.inis||[]).some(f=>f.hasBackup)||(mk&&mk.hasBackup);
+  box.innerHTML=`<p class="hint">このソフトのキーをMAMEに届けるための設定です。mame.ini（keyboardprovider を dinput に）と、MAMEの入力の割り当て（cfg\\default.cfg：ボタンとレバーをキーボードだけに）を書き換えます。コントローラーはMAMEに見えたままなので、アナログ操作のゲームはそのまま遊べます。書き換える前のファイルは残ります。</p>
+    <div class="row"><label style="width:auto" for="mameDir">MAMEのフォルダ</label><input type="text" id="mameDir" value="${esc(cfg.options.mameDir||"")}" placeholder="例: C:\\MAME"><button class="sbtn" id="mamePick">参照…</button><button class="sbtn" id="mameLoad">読み込む</button></div>
+    ${m.runningDir&&m.runningDir!==cfg.options.mameDir?`<p class="hint">起動中のMAME：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
+    ${status}
+    <div class="inis">${(m.inis||[]).map(ini).join("")}</div>
+    ${st==="todo"||st==="ready"?`<div class="row">${st==="todo"?`<button class="sbtn pri" id="mameSetup" ${running?"disabled":""}>MAMEをこのソフト用にする</button>`:""}${hasBackup?`<button class="sbtn" id="mameUndo" ${running?"disabled":""}>元に戻す</button>`:""}${running?`<span class="hint ng">MAMEを閉じてから押してください</span>`:""}</div>`:""}`;
+  const inp=$("#mameDir");
+  const load=()=>{cfg.options.mameDir=inp.value.trim();changed();loadMame(cfg.options.mameDir)};
+  $("#mameLoad").onclick=load;inp.onkeydown=e=>{if(e.key==="Enter")load()};
+  $("#mamePick").onclick=pickMameDir;
   const ur=$("#useRunning");if(ur)ur.onclick=()=>{cfg.options.mameDir=m.runningDir;changed();loadMame(m.runningDir)};
-  box.querySelectorAll("[data-apply]").forEach(b=>b.onclick=()=>call("mameApply",{Dir:m.dir,Path:b.dataset.apply}).then(()=>{toast("書き換えました");loadMame(m.dir)}).catch(e=>toast(e,true)));
-  box.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>call("mameRestore",{Dir:m.dir,Path:b.dataset.restore}).then(()=>{toast("元に戻しました");loadMame(m.dir)}).catch(e=>toast(e,true)));
+  const sb=$("#mameSetup");if(sb)sb.onclick=doSetup;
+  const ub=$("#mameUndo");if(ub)ub.onclick=()=>{if(ub.dataset.c!=="1"){ub.dataset.c="1";ub.textContent="もう一度押すと元に戻す";return}
+    call("mameUndo",{Dir:cfg.options.mameDir}).then(()=>{toast("元に戻しました");loadMame()}).catch(e=>toast(e,true))};
+}
+
+/* ---------- はじめにやること ---------- */
+let setupHidden=false;try{setupHidden=localStorage.getItem("setupHidden")==="1"}catch(e){}
+let triedGame=false;
+function renderSetup(){
+  const el=$("#setup");if(!cfg){el.innerHTML="";return}
+  const st=mameState(),list=connected();
+  if(game.rom&&active)triedGame=true;
+  const steps=[
+    {t:"MAMEのフォルダを選ぶ",s:cfg.options.mameDir?esc(cfg.options.mameDir):"mame.exe がある所",done:["todo","ready"].includes(st),btn:`<button class="sbtn ${["todo","ready"].includes(st)?"":"pri"}" data-act="pick">参照…</button>`},
+    {t:"MAMEをこのソフト用にする",s:game.rom&&st==="todo"?"MAMEを閉じると押せます（mame.ini と入力の割り当てを書き換えます）":"mame.ini と入力の割り当てを書き換えます（MAMEは閉じておく）",done:st==="ready",btn:st==="todo"?`<button class="sbtn pri" data-act="setup" ${game.rom?"disabled":""}>このソフト用にする</button>`:""},
+    {t:"コントローラーを確かめる",s:list.length?"下の一覧で 1P／2P が合っているか、ボタンを押して光るか確かめます":"コントローラーをつなぐと、下に出てきます",done:list.some(d=>devCfg(d.key).assign),btn:""},
+    {t:"MAMEでゲームを起動して試す",s:"上に ROM 名が出て「MAMEに送信中」になればOK",done:triedGame,btn:""}];
+  const allDone=steps.every(x=>x.done);
+  if(allDone||setupHidden){el.innerHTML="";return}
+  const cur=steps.findIndex(x=>!x.done);
+  el.innerHTML=`<div class="setup"><div class="row" style="justify-content:space-between"><h2>はじめにやること</h2><button class="sbtn" id="setupHide">閉じる</button></div>
+    ${steps.map((x,i)=>`<div class="step ${x.done?"done":i===cur?"cur":""}"><span class="n">${x.done?"✓":i+1}</span><span class="t">${x.t}<small>${x.s}</small></span><span>${x.done&&i>0?"":x.btn}</span></div>`).join("")}</div>`;
+  el.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{if(b.dataset.act==="pick")pickMameDir();else doSetup()});
+  $("#setupHide").onclick=()=>{setupHidden=true;try{localStorage.setItem("setupHidden","1")}catch(e){}renderSetup();toast("「全体の設定」からまた表示できます")};
 }
 
 /* ---------- キーボードの設定 ---------- */
@@ -747,7 +809,7 @@ async function loadKeys(){
   const dir=cfg.options.mameDir||"";
   if(!dir){ui.mk=null;renderKeys();return}
   try{ui.mk=await call("mameKeys",dir)}catch(e){ui.mk=null;toast(e,true)}
-  renderKeys();
+  renderKeys();renderSetup();
 }
 function renderKeys(){
   const box=$("#keyBox"),mk=ui.mk,dir=cfg.options.mameDir||"";
@@ -768,6 +830,7 @@ function renderKeys(){
     <p class="hint">MAMEの操作キー（メニュー・一時停止など）はMAMEのバージョンで初期値が違います。ここではMAME 0.289 の初期値にしています。古いMAMEでは「MAMEの設定を読み込む」か、手で合わせてください。</p>
     <div style="overflow-x:auto"><div class="keys">${srows}</div></div>
     ${mk?(diff?`<p class="ng">MAMEの設定と違うキーが ${diff} か所あります。このままだと、その入力はMAMEに届きません。</p>`:`<p class="ok">MAMEの設定と一致しています。</p>`):""}
+    ${mk&&mk.padBound&&mk.padBound.length?`<p class="ng">MAMEがコントローラーを直接読む割り当てが ${mk.padBound.length} か所残っています（二重に動きます）。「MAMEに書き込む」で、キーボードだけにします。</p>`:""}
     ${mk&&mk.overrides&&mk.overrides.length?`<p class="hint ng">次のゲームは、MAME側でゲーム別にキーを変えているので、そちらが優先されます：<span class="mono">${mk.overrides.map(esc).join(", ")}</span>（MAMEのゲーム中メニューの「入力設定（このゲーム）」で戻せます）</p>`:""}
     <div class="row">
       <button class="sbtn pri" id="kWrite" ${dir?"":"disabled"}>MAMEに書き込む</button>
@@ -777,7 +840,7 @@ function renderKeys(){
     </div>
     ${mk?`<p class="hint mono">${esc(mk.path)}${mk.exists?"":"（まだありません。書き込むと作ります）"}</p>`:""}`;
   box.querySelectorAll("[data-key]").forEach(s=>s.onchange=()=>{const [pl,f]=s.dataset.key.split(":");cfg.keys[pl][f]=s.value;changed();renderKeys()});
-  $("#kWrite").onclick=()=>call("mameKeysWrite",{Dir:dir,Keys:cfg.keys}).then(p=>{toast("MAMEに書き込みました："+p);loadKeys()}).catch(e=>toast(e,true));
+  $("#kWrite").onclick=()=>call("mameKeysWrite",{Dir:dir,Keys:cfg.keys}).then(p=>{toast("MAMEに書き込みました："+p);loadMame(dir,true)}).catch(e=>toast(e,true));
   $("#kRead").onclick=()=>{if(!mk)return;for(const pl of ["1","2","0"])for(const f of (pl==="0"?SYSF:FUNCS))if(mk.keys[pl]&&mk.keys[pl][f])cfg.keys[pl][f]=mk.keys[pl][f];toast("MAMEのキー設定を読み込みました");changed();renderKeys()};
   $("#kDef").onclick=()=>{cfg.keys=clone(DEFKEYS);toast("初期値に戻しました。MAMEにも反映するには「MAMEに書き込む」を押してください");changed();renderKeys()};
   const kr=$("#kRestore");if(kr)kr.onclick=()=>call("mameKeysRestore",{Dir:dir}).then(()=>{toast("default.cfg を元に戻しました");loadKeys()}).catch(e=>toast(e,true));
@@ -810,18 +873,20 @@ function renderOpts(){
   $("#optBox").innerHTML=`<label class="switch"><input type="checkbox" id="front" ${cfg.options.onlyWhenFront?"checked":""}> MAMEの画面が前面にあるときだけ送る（おすすめ）</label>
     <label class="switch"><input type="checkbox" id="auto" ${autostart?"checked":""}> Windowsの起動時に常駐させる（画面は出さない）</label>
     <label class="switch"><input type="checkbox" id="pause" ${paused?"checked":""}> 一時停止する</label>
+    <div class="row"><button class="sbtn" id="showSetup">「はじめにやること」を表示する</button></div>
     <div class="row"><button class="sbtn" id="quit">終了する</button><span class="hint">設定ファイル：このソフトと同じフォルダの shotpanel.json</span></div>`;
   $("#front").onchange=e=>{cfg.options.onlyWhenFront=e.target.checked;changed()};
   $("#auto").onchange=e=>call("autostart",e.target.checked?"1":"0").then(()=>autostart=e.target.checked).catch(err=>{e.target.checked=!e.target.checked;toast(err,true)});
   $("#pause").onchange=e=>{paused=e.target.checked;call("pause",paused?"1":"0");renderStatus()};
   $("#quit").onclick=()=>call("quit");
+  $("#showSetup").onclick=()=>{setupHidden=false;try{localStorage.removeItem("setupHidden")}catch(e){}renderSetup();window.scrollTo(0,0)};
 }
 $("#mameFold").ontoggle=e=>{if(e.target.open)loadMame()};
 $("#hideBtn").onclick=()=>call("hide");
 
 function renderAll(){
   if(!cfg)return;
-  renderStatus();renderEditBar();renderPads();
+  renderStatus();renderSetup();renderEditBar();renderPads();
   if($("#optFold").open)renderOpts();
   renderMash();
 }
@@ -838,13 +903,16 @@ window.onState=st=>{
     cfg.games=cfg.games||{};cfg.games[COMMON]=cfg.games[COMMON]||{devices:{}};
     for(const g of Object.values(cfg.games))g.devices=g.devices||{};
     for(const d of Object.values(cfg.devices||{}))d.map=d.map||{};
+    cfg.keys=cfg.keys||{};for(const pl of ["1","2","0"]){cfg.keys[pl]=cfg.keys[pl]||{};for(const f of Object.keys(DEFKEYS[pl]))if(cfg.keys[pl][f]===undefined)cfg.keys[pl][f]=DEFKEYS[pl][f]}
     cfg.options=cfg.options||keep||{onlyWhenFront:true};
   }
   if(!cfg)return;
+  if(!ui.mameLoaded){ui.mameLoaded=true;loadMame(undefined,true)}
   const dk=devs.map(d=>d.key).join(",");
   for(const d of devs)learnTick(d);
   if(!$("#mashBox").hidden){const vd=devs.find(x=>x.key===(mash.target||view));if(vd)mashSample(vd)}
   if(romChanged){lastRom=g.rom;if(!editManual)ui.sel=null;editManual=false}
+  if(st.active!==ui.lastActive){ui.lastActive=st.active;renderSetup()}
   if(st.config||romChanged||dk!==lastDevKeys){lastDevKeys=dk;renderAll()}else renderStatus();
 };
 window.addEventListener("load",()=>call("init").then(r=>{keyNames=r.keyNames||[];autostart=r.autostart}).catch(e=>toast(e,true)));

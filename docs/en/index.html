@@ -91,8 +91,8 @@ ol{margin:6px 0;padding-left:22px}
 <h3 style="margin:0 0 6px;font-size:15px">Getting started</h3>
 <ol>
 <li>Unzip, put the folder anywhere you like and run <b>ShotPanel.exe</b>. The first time, Windows may show "Windows protected your PC"; choose "More info" → "Run anyway". Settings are saved automatically to <code>shotpanel.json</code> in the same folder.</li>
-<li>Open <b>MAMEの設定</b> (MAME settings) at the bottom, choose your MAME folder, and press the button to adapt the mame.ini it finds (sets joystick 0, and keyboardprovider dinput on newer MAME). The original file is kept and can be restored. Close MAME first.</li>
-<li>Open <b>キーボードの設定</b> (Keyboard settings) and press the write button. This writes the keys ShotPanel sends into MAME's <code>cfg\default.cfg</code> (needed because MAME has no default key for 2P Button 6).</li>
+<li>Follow <b>はじめにやること</b> (Getting started) at the top of the window. Choose your MAME folder (where mame.exe is) with the browse button, close MAME, then press the set-up button. It edits mame.ini and MAME's input assignments (<code>cfg\default.cfg</code>: buttons and lever keyboard-only). MAME still sees the controller, so games with analog controls keep working. The original files are kept and can be restored.</li>
+<li>To change keys, use <b>キーボードの設定</b> (Keyboard settings) and press the write button.</li>
 <li>Connected controllers appear automatically. Set each one to 1P, 2P or Off. If the buttons on screen are not where the real ones are, register their positions by pressing them.</li>
 <li>Pick a layout pattern such as 2B-1. Click a button on screen to change just that button.</li>
 <li>Closing the window does not quit the app; it keeps running in the notification area. Right-click the icon to open settings, pause or quit.</li>
@@ -104,7 +104,6 @@ ol{margin:6px 0;padding-left:22px}
 <ul>
 <li>When a game starts in MAME, ShotPanel reads the ROM name from the window title. Games without their own settings use the common settings; one button creates settings just for that game.</li>
 <li>You can copy settings from another game.</li>
-<li>For games with analog controls, turn on the option to let MAME read the pad directly; ShotPanel then stays out of the way for that game.</li>
 </ul>
 <h3 style="margin:14px 0 6px;font-size:15px">Requirements and notes</h3>
 <ul>

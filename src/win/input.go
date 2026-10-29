@@ -17,15 +17,15 @@ import (
 
 // Device はつながっているコントローラー1台。
 type Device struct {
-	Key      string   `json:"key"`
-	Name     string   `json:"name"`
-	Kind     string   `json:"kind"` // hid / xinput
-	VID      uint16   `json:"vid"`
-	PID      uint16   `json:"pid"`
-	Conn     string   `json:"conn"` // USB / Bluetooth
-	NButtons int      `json:"nButtons"`
-	Controls []string `json:"controls"` // この機器にある入力ID
-	Presses  map[string]uint32 `json:"presses"` // 押した回数の累計（手連射の計測用）
+	Key      string            `json:"key"`
+	Name     string            `json:"name"`
+	Kind     string            `json:"kind"` // hid / xinput
+	VID      uint16            `json:"vid"`
+	PID      uint16            `json:"pid"`
+	Conn     string            `json:"conn"` // USB / Bluetooth
+	NButtons int               `json:"nButtons"`
+	Controls []string          `json:"controls"` // この機器にある入力ID
+	Presses  map[string]uint32 `json:"presses"`  // 押した回数の累計（手連射の計測用）
 
 	state   map[string]bool
 	stickLR float64
@@ -33,12 +33,12 @@ type Device struct {
 	hatDir  [4]bool
 
 	// HID
-	handle     uintptr
-	preparsed  []byte
-	usageMax   uint32
-	hat        *valCap
-	axX, axY   *valCap
-	xiIndex    int
+	handle    uintptr
+	preparsed []byte
+	usageMax  uint32
+	hat       *valCap
+	axX, axY  *valCap
+	xiIndex   int
 }
 
 type valCap struct {
@@ -49,16 +49,18 @@ type valCap struct {
 
 // Input はRaw InputとXInputをまとめて扱う。
 type Input struct {
-	mu      sync.Mutex
-	devs    map[uintptr]*Device // HIDのハンドル → 機器
-	ignored map[uintptr]bool    // XInputの機器など、HIDとしては読まないもの
-	xi      [4]*Device
-	xiNames map[uintptr]string
+	mu       sync.Mutex
+	devs     map[uintptr]*Device // HIDのハンドル → 機器
+	ignored  map[uintptr]bool    // XInputの機器など、HIDとしては読まないもの
+	xi       [4]*Device
+	xiNames  map[uintptr]string
 	OnChange func() // 接続・切断の通知
-	hwnd    uintptr
+	hwnd     uintptr
 }
 
-func NewInput() *Input { return &Input{devs: map[uintptr]*Device{}, xiNames: map[uintptr]string{}, ignored: map[uintptr]bool{}} }
+func NewInput() *Input {
+	return &Input{devs: map[uintptr]*Device{}, xiNames: map[uintptr]string{}, ignored: map[uintptr]bool{}}
+}
 
 // Snapshot は今の機器一覧と押されている入力を返す（スティックはレバー扱いの有無を反映）。
 type DevState struct {
@@ -336,7 +338,9 @@ func (in *Input) addHID(h uintptr) {
 }
 
 func le16(b []byte) uint16 { return uint16(b[0]) | uint16(b[1])<<8 }
-func le32(b []byte) uint32 { return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24 }
+func le32(b []byte) uint32 {
+	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
+}
 
 var rawBuf = make([]byte, 4096)
 

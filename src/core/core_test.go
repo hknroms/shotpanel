@@ -97,15 +97,15 @@ func TestIni(t *testing.T) {
 	orig := "#\r\n# CORE INPUT OPTIONS\r\n#\r\njoystick                  1\r\nkeyboardprovider          auto\r\nrompath                   roms\r\n"
 	os.WriteFile(p, []byte(orig), 0644)
 	ch, err := ApplyMame(p)
-	if err != nil || len(ch) != 2 {
+	if err != nil || len(ch) != 1 {
 		t.Fatal(ch, err)
 	}
 	b, _ := os.ReadFile(p)
-	if !strings.Contains(string(b), "joystick                  0\r\n") || !strings.Contains(string(b), "keyboardprovider          dinput\r\n") {
+	if !strings.Contains(string(b), "joystick                  1\r\n") || !strings.Contains(string(b), "keyboardprovider          dinput\r\n") {
 		t.Fatal(string(b))
 	}
 	fs := FindInis(dir)
-	if len(fs) != 1 || !fs[0].HasBackup || fs[0].Joystick != "0" {
+	if len(fs) != 1 || !fs[0].HasBackup || fs[0].Joystick != "1" || !fs[0].Ready() {
 		t.Fatal(fs)
 	}
 	if err := RestoreMame(p); err != nil {
@@ -117,10 +117,10 @@ func TestIni(t *testing.T) {
 	}
 	// 古いMAME（keyboardprovider 無し）は足さない
 	old := filepath.Join(dir, "old.ini")
-	os.WriteFile(old, []byte("joystick 1\n"), 0644)
+	os.WriteFile(old, []byte("joystick 0\n"), 0644)
 	ApplyMame(old)
 	b, _ = os.ReadFile(old)
-	if string(b) != "joystick 0\n" {
+	if string(b) != "joystick 1\n" {
 		t.Fatalf("%q", b)
 	}
 	// ゲーム別
@@ -188,11 +188,11 @@ func TestMameKeys(t *testing.T) {
 	}
 	b, _ := os.ReadFile(p)
 	s := string(b)
-	if !strings.Contains(s, `<port type="P2_BUTTON6">`) || !strings.Contains(s, "KEYCODE_H") || strings.Contains(s, "P1_BUTTON1") {
+	if !strings.Contains(s, `<port type="P2_BUTTON6">`) || !strings.Contains(s, "KEYCODE_H") || !strings.Contains(s, `<port type="P1_BUTTON1">`) {
 		t.Fatal(s)
 	}
 	mk, _ := ReadMameKeys(dir)
-	if mk.Keys["2"]["B6"] != "H" || mk.Keys["1"]["B1"] != "LCONTROL" || !mk.HasBackup {
+	if mk.Keys["2"]["B6"] != "H" || mk.Keys["1"]["B1"] != "LCONTROL" || !mk.HasBackup || len(mk.PadBound) != 0 {
 		t.Fatal(mk.Keys)
 	}
 	// MAMEが書いたファイル（ほかの設定あり）に書き足す
@@ -214,7 +214,7 @@ func TestMameKeys(t *testing.T) {
 	os.WriteFile(p, []byte(orig), 0644)
 	os.WriteFile(filepath.Join(dir, "cfg", "raiden.cfg"), []byte(`<mameconfig version="10"><system name="raiden"><input><port tag=":IN0" type="P1_BUTTON1" mask="1" defvalue="1"><newseq type="standard">KEYCODE_B</newseq></port></input></system></mameconfig>`), 0644)
 	mk, _ = ReadMameKeys(dir)
-	if mk.Keys["1"]["B1"] != "A" || len(mk.Overrides) != 1 || mk.Overrides[0] != "raiden" {
+	if mk.Keys["1"]["B1"] != "A" || len(mk.Overrides) != 1 || mk.Overrides[0] != "raiden" || len(mk.PadBound) == 0 {
 		t.Fatal(mk.Keys["1"], mk.Overrides)
 	}
 	keys["1"]["B1"] = "LCONTROL"

@@ -123,6 +123,7 @@ type MameKeys struct {
 	Exists    bool                         `json:"exists"`
 	Keys      map[string]map[string]string `json:"keys"`      // 実際にMAMEが使うキー（"" = キー無し）
 	Overrides []string                     `json:"overrides"` // ゲーム別にキーを変えているROM
+	PadBound  []string                     `json:"padBound"`  // コントローラーを直接読む割り当てが残っている入力（"1:B1" など）
 	HasBackup bool                         `json:"hasBackup"`
 }
 
@@ -134,6 +135,7 @@ func ReadMameKeys(mameDir string) (*MameKeys, error) {
 	if _, err := os.Stat(p + backupSuffix); err == nil {
 		res.HasBackup = true
 	}
+	seenPort := map[string]bool{} // true = キーボードだけ
 	b, err := os.ReadFile(p)
 	if err == nil {
 		res.Exists = true
@@ -153,10 +155,16 @@ func ReadMameKeys(mameDir string) (*MameKeys, error) {
 					continue
 				}
 				res.Keys[pf[0]][pf[1]] = seqKeys(string(seq[1]))
+				seenPort[pf[0]+":"+pf[1]] = !strings.Contains(string(seq[1]), "JOYCODE")
 			}
 		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
+	}
+	for _, it := range writeItems() {
+		if !seenPort[it[0]+":"+it[1]] {
+			res.PadBound = append(res.PadBound, it[0]+":"+it[1])
+		}
 	}
 	// ゲーム別の cfg で1P・2Pのキーを変えているもの
 	idx := portIndex()
@@ -175,7 +183,7 @@ func ReadMameKeys(mameDir string) (*MameKeys, error) {
 				if t == nil {
 					continue
 				}
-				if _, ok := idx[string(t[1])]; ok && reKeycode.Match(pm[2]) {
+				if _, ok := idx[string(t[1])]; ok && reStdSeq.Match(pm[2]) {
 					res.Overrides = append(res.Overrides, strings.TrimSuffix(n, filepath.Ext(n)))
 					break
 				}
@@ -190,27 +198,13 @@ func ReadMameKeys(mameDir string) (*MameKeys, error) {
 func WriteMameKeys(mameDir string, keys map[string]map[string]string) (string, error) {
 	dir := CfgDir(mameDir)
 	p := filepath.Join(dir, "default.cfg")
-	def := MameDefaultKeys()
 	idx := portIndex()
 
 	var ports strings.Builder
-	type item struct{ pl, fn string }
-	var items []item
-	for _, pl := range []string{"1", "2"} {
-		for _, fn := range Funcs {
-			items = append(items, item{pl, fn})
-		}
-	}
-	for _, fn := range []string{"SERVICE1", "SERVICE", "TILT"} {
-		items = append(items, item{"0", fn})
-	}
-	for _, it := range items {
-		pl, fn := it.pl, it.fn
+	for _, it := range writeItems() {
+		pl, fn := it[0], it[1]
 		{
 			k := keys[pl][fn]
-			if k == def[pl][fn] {
-				continue
-			}
 			v := "NONE"
 			if k != "" {
 				var parts []string
@@ -303,3 +297,18 @@ func RestoreMameKeys(mameDir string) error {
 
 // UIKeys はMAMEの操作に使われているキー（ゲームの入力に使うと困るもの）。
 var UIKeys = map[string]string{"ESC": "終了", "TAB": "メニュー", "F5": "一時停止", "TILDE": "画面表示", "F1": "", "F2": "", "F3": "リセット", "F4": "", "F6": "", "F7": "", "F8": "", "F9": "", "F10": "", "F11": "", "F12": "", "INSERT": "早送り", "SCRLOCK": ""}
+
+// writeItems は default.cfg に書き込む入力（1P・2Pの全部と、サービス・テスト・ティルト）。
+// 初期の割り当てに任せると、MAMEがコントローラーも直接読んでしまうので、全部キーボードだけと書く。
+func writeItems() [][2]string {
+	var out [][2]string
+	for _, pl := range []string{"1", "2"} {
+		for _, fn := range Funcs {
+			out = append(out, [2]string{pl, fn})
+		}
+	}
+	for _, fn := range []string{"SERVICE1", "SERVICE", "TILT"} {
+		out = append(out, [2]string{"0", fn})
+	}
+	return out
+}
