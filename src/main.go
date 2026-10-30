@@ -23,6 +23,7 @@ import (
 var indexHTML string
 
 const appName = "連射パネル設定"
+const appVersion = "0.10.2"
 
 type gameInfo struct {
 	Rom   string           `json:"rom"`
@@ -54,10 +55,20 @@ type App struct {
 }
 
 func main() {
-	if !win.SingleInstance() {
+	run, oldExe := win.SingleInstance()
+	if !run {
 		return
 	}
 	exe, _ := os.Executable()
+	// 別のフォルダの古い版と入れ替わったとき、こちらに設定が無ければ引き継ぐ
+	if oldExe != "" {
+		src, dst := core.ConfigPath(filepath.Dir(oldExe)), core.ConfigPath(filepath.Dir(exe))
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			if b, err := os.ReadFile(src); err == nil {
+				os.WriteFile(dst, b, 0o644)
+			}
+		}
+	}
 	a := &App{exeDir: filepath.Dir(exe), eng: core.NewEngine(), sent: map[string]bool{}, quit: make(chan struct{})}
 	var err error
 	a.cfg, err = core.Load(core.ConfigPath(a.exeDir))
@@ -91,7 +102,7 @@ func (a *App) runUI(hidden bool) {
 		AutoFocus: true,
 		DataPath:  filepath.Join(os.Getenv("LOCALAPPDATA"), "ShotPanel", "WebView2"),
 		WindowOptions: webview2.WindowOptions{
-			Title: appName, Width: uint(720 * sc), Height: uint(880 * sc), Center: true, IconId: 2,
+			Title: appName + " v" + appVersion, Width: uint(720 * sc), Height: uint(880 * sc), Center: true, IconId: 2,
 		},
 	})
 	if a.wv == nil {
@@ -379,7 +390,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		a.mu.Lock()
 		a.devDirty = true
 		a.mu.Unlock()
-		return map[string]interface{}{"keyNames": sortedKeys(), "autostart": win.Autostart()}, nil
+		return map[string]interface{}{"keyNames": sortedKeys(), "autostart": win.Autostart(), "version": appVersion}, nil
 	case "putConfig":
 		var c core.Config
 		if err := json.Unmarshal([]byte(arg), &c); err != nil {

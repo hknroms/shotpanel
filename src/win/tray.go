@@ -4,6 +4,8 @@ package win
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -14,6 +16,7 @@ import (
 const (
 	wmTray = wmApp + 1
 	WMShow = wmApp + 2
+	WMQuit = wmApp + 3 // v0.10.2〜：別の場所から新しい ShotPanel が起動したときに、こちらを終わらせる
 )
 
 // Tray は通知領域アイコン。
@@ -85,6 +88,11 @@ func (t *Tray) proc(hwnd uintptr, m uint32, w, l uintptr) (uintptr, bool) {
 	case WMShow:
 		if t.OnOpen != nil {
 			go t.OnOpen()
+		}
+		return 0, true
+	case WMQuit:
+		if t.OnQuit != nil {
+			go t.OnQuit()
 		}
 		return 0, true
 	}
@@ -159,16 +167,40 @@ func ShowWindow(hwnd uintptr, show bool) {
 
 func IsVisible(hwnd uintptr) bool { r, _, _ := pIsWindowVisibleP.Call(hwnd); return r != 0 }
 
-// SingleInstance は2つ目の起動なら、先に起動している方に「画面を出して」と送って false を返す。
-func SingleInstance() bool {
+// SingleInstance は2つ目の起動かどうかを調べる。
+//   - 先に起動しているのが同じ exe なら、そちらに「画面を出して」と送って run=false。
+//   - 別の場所の exe（古い版が常駐したまま、新しい版を別のフォルダから起動した等）なら、
+//     そちらを終わらせて入れ替わる（run=true、old にそちらの exe のパス）。
+//     古い版は WMQuit を知らないので、少し待っても終わらなければ強制終了する。
+func SingleInstance() (run bool, old string) {
 	pCreateMutexW.Call(0, 0, uintptr(unsafe.Pointer(u16("ShotPanel-SingleInstance"))))
-	if windows.GetLastError() == windows.ERROR_ALREADY_EXISTS {
-		if h, _, _ := pFindWindowW.Call(uintptr(unsafe.Pointer(u16("ShotPanelInput"))), 0); h != 0 {
-			pPostMessageW.Call(h, WMShow, 0, 0)
-		}
-		return false
+	if windows.GetLastError() != windows.ERROR_ALREADY_EXISTS {
+		return true, ""
 	}
-	return true
+	h, _, _ := pFindWindowW.Call(uintptr(unsafe.Pointer(u16("ShotPanelInput"))), 0)
+	if h == 0 {
+		return false, ""
+	}
+	var pid uint32
+	pGetWindowThreadProcessId.Call(h, uintptr(unsafe.Pointer(&pid)))
+	other := processPath(pid)
+	me, _ := os.Executable()
+	if pid == 0 || other == "" || strings.EqualFold(filepath.Clean(other), filepath.Clean(me)) {
+		pPostMessageW.Call(h, WMShow, 0, 0)
+		return false, ""
+	}
+	pPostMessageW.Call(h, WMQuit, 0, 0)
+	ph, err := windows.OpenProcess(windows.SYNCHRONIZE|windows.PROCESS_TERMINATE, false, pid)
+	if err != nil {
+		pPostMessageW.Call(h, WMShow, 0, 0)
+		return false, ""
+	}
+	defer windows.CloseHandle(ph)
+	if ev, _ := windows.WaitForSingleObject(ph, 2000); ev != windows.WAIT_OBJECT_0 {
+		windows.TerminateProcess(ph, 0)
+		windows.WaitForSingleObject(ph, 3000)
+	}
+	return true, other
 }
 
 const runKey = `Software\Microsoft\Windows\CurrentVersion\Run`
