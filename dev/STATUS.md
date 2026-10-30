@@ -61,7 +61,7 @@ GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o S
 ```
 
 - 実機（Windows・コントローラー・MAMEUI）での確認はこちらではできない。画面は Playwright（Chromium）で `ui/index.html` を開き、`window.api` を仮のデータに差し替えて確かめてきた。
-- 公開の手順：zip（`ShotPanel/ShotPanel.exe`・`ShotPanel/はじめにお読みください.txt`・`ShotPanel/source.zip`）を `docs/files/ShotPanel_v<版>.zip` に置く → `docs/versions.json` の先頭に版を足す（日本語と `en` の英語の両方）→ 使い方が変わったら `docs/index.html` と `docs/en/index.html` も直す。
+- 公開の手順：zip は **`python3 dev/make_zip.py <ShotPanelフォルダ> <出力.zip>` で作る**（Linux の zip コマンドだと日本語のファイル名に UTF-8 の印が付かず、Windows で化ける）。zip（`ShotPanel/ShotPanel.exe`・`ShotPanel/はじめにお読みください.txt`・`ShotPanel/source.zip`）を `docs/files/ShotPanel_v<版>.zip` に置く → `docs/versions.json` の先頭に版を足す（日本語と `en` の英語の両方）→ 使い方が変わったら `docs/index.html` と `docs/en/index.html` も直す。
 - 「はじめにお読みください.txt」は UTF-8（BOM付き）・CRLF。最新の zip から取り出して書き足していく。
 - **配布ページ（docs/）への公開の前はユーザーに確認する**（CLAUDE.md）。src/ や dev/ は確認なしで commit・push してよい。
 - docs/index.html の上部に `window.REQUIRE_LOGIN = false;` がある。true にすると gradius3 と同じ Google ログイン＋承認制（Firebase プロジェクト gradius3-login）になる。
