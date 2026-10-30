@@ -52,10 +52,10 @@ func DefaultPhys(kind string) string {
 }
 
 // DefaultLayout は、新しくつないだコントローラーの配置の初期値。
-// 2026-10-30 ユーザー決定：パッド・アケコンを問わず「1レバー8ボタン＋スタート（コイン別）」（8b）にする。
+// 2026-10-30 ユーザー決定：パッド・アケコンを問わず「1レバー8ボタン＋右端にスタート」（8bs）にする。
 // （以前は名前から推測し、XInput・パッドは "pad" にしていた）
 func DefaultLayout(name string, kind string, vid uint16) string {
-	return "8b"
+	return "8bs"
 }
 
 // ExtraLabel はその他ボタンの表示名。
