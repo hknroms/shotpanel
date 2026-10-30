@@ -2,6 +2,7 @@
 
 MAME用の連射・ボタン割り当てソフト「連射パネル設定（ShotPanel）」のリポジトリです。管理者は hknroms。
 
+- **会話を始めたら、この CLAUDE.md の次に [dev/STATUS.md](dev/STATUS.md)（引き継ぎ）を読む。** 作業の節目で STATUS.md を更新して push する。
 - 返事は日本語で短く。ユーザーは音声入力をよく使うので聞き間違いに注意（例:「メーム」「メム」「豆」=MAME、「手連車」=手連射、「グラスリー」=gradius3）。
 - **配布ページ（docs/index.html・docs/versions.json・docs/files/）に新しい版を公開する push の前は、ユーザーに確認する。** 公開したら https://hknroms.github.io/shotpanel/ を伝える。
 - 公開のページ（docs/ 以下）と、そこからたどれる所に、作業用アカウントの名前と Claude の名前を出さない。開発用の記録は dev/ に置く。
