@@ -1,6 +1,23 @@
 {
  "versions": [
   {
+   "version": "0.10.1",
+   "date": "2026-10-30",
+   "title": "上の帯を2段・高さ固定にした／配置の初期値を「8ボタン＋右端にスタート」にした",
+   "changes": [
+    "画面の上の帯を2段・高さ固定にした（1段目にゲームと状態、2段目に送っているキー）。たくさん入力すると帯が微妙に動くことがあったのを直した",
+    "新しくつないだコントローラーの配置の初期値を「1レバー8ボタン＋右端にスタート」にした（これまではパッドだと判断すると「ゲームパッド」になっていた）。設定済みのコントローラーは変わらない"
+   ],
+   "file": "files/ShotPanel_v0.10.1.zip",
+   "en": {
+    "title": "Two-row fixed-height status bar / new controllers default to \"8 buttons + Start on the right\"",
+    "changes": [
+     "The status bar at the top now has two fixed-height rows (game and state on the first, keys being sent on the second), so it no longer shifts slightly during heavy input",
+     "Newly connected controllers now start with the \"1 lever, 8 buttons + Start on the right\" layout (before, controllers detected as pads got the \"Gamepad\" layout). Controllers already set up are unchanged"
+    ]
+   }
+  },
+  {
    "version": "0.10.0",
    "date": "2026-10-30",
    "title": "MAMEUI専用にした／MAMEUIが読む mame.ini を書き換えるように直した",
