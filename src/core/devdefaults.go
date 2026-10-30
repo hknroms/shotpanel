@@ -51,17 +51,10 @@ func DefaultPhys(kind string) string {
 	return "ps"
 }
 
-// DefaultLayout は名前からおおよその配置を推測する。
+// DefaultLayout は、新しくつないだコントローラーの配置の初期値。
+// 2026-10-30 ユーザー決定：パッド・アケコンを問わず「1レバー8ボタン＋スタート（コイン別）」（8b）にする。
+// （以前は名前から推測し、XInput・パッドは "pad" にしていた）
 func DefaultLayout(name string, kind string, vid uint16) string {
-	n := strings.ToLower(name)
-	for _, w := range []string{"stick", "arcade", "fight", "brook", "hori", "rap", "スティック", "qanba", "mayflash", "victrix", "razer panthera", "8bitdo arcade"} {
-		if strings.Contains(n, w) {
-			return "8b"
-		}
-	}
-	if vid == SonyVID || kind == "xinput" || strings.Contains(n, "controller") || strings.Contains(n, "gamepad") || strings.Contains(n, "pad") {
-		return "pad"
-	}
 	return "8b"
 }
 

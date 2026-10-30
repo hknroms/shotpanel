@@ -31,14 +31,19 @@ input[type=text]{min-width:0;flex:1}
 .sbtn:disabled{opacity:.4;cursor:default}
 
 /* ヘッダー */
-.status{display:flex;flex-wrap:nowrap;gap:8px 10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;height:40px;overflow:hidden}
-.status>*{flex:none;white-space:nowrap}
-.status .gt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.keysent{display:inline-block;width:150px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;font-family:var(--mono);margin-left:4px}
+.status{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;height:60px;overflow:hidden;contain:strict;display:grid;grid-template-rows:22px 22px;row-gap:4px}
+.status .st1,.status .st2{display:flex;flex-wrap:nowrap;align-items:center;gap:10px;height:22px;line-height:22px;overflow:hidden;min-width:0}
+.status .st1>*:not(.dot),.status .st2>*{flex:none;white-space:nowrap;height:22px;line-height:22px;overflow:hidden}
+.status .st1 .gt{flex:1 1 0;min-width:0;text-overflow:ellipsis}
+.status .lbl{width:3.5em}
+.status .st2 .k{font-size:11px;color:var(--muted);width:7em}
+.keysent{flex:1 1 0 !important;min-width:0;text-overflow:ellipsis;font-family:var(--mono);font-size:12px;color:var(--p2)}
+.keysent.none{color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
 .dot.on{background:var(--p2);box-shadow:0 0 8px var(--p2)}
 .rom{font-family:var(--mono);color:var(--accent)}
-.pill{font-size:11px;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:1px 8px;white-space:nowrap;margin-left:auto;max-width:60%;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:11px;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:0 8px;white-space:nowrap;width:15em;text-align:center;overflow:hidden;text-overflow:ellipsis}
+.status .pill{height:20px;line-height:18px}
 .pill.on{border-color:var(--p2);color:var(--p2)}
 .pill.warn{border-color:var(--warn);color:var(--warn)}
 .editbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -396,15 +401,27 @@ function bindPat(id,cur,set){
   };
 }
 
+// 帯は毎回作り直さず、文字とクラスだけを書き換える（大きさは CSS で固定。入力が多くても動かない）
+function setTxt(el,t){if(el.textContent!==t)el.textContent=t}
+function setCls(el,c){if(el.className!==c)el.className=c}
 function renderStatus(){
   const st=$("#status");
-  let pill;
-  if(paused)pill=`<span class="pill warn">一時停止中</span>`;
-  else if(game.rom&&curGameIsDirect())pill=`<span class="pill">このゲームはMAMEが直接読む設定</span>`;
-  else if(active)pill=`<span class="pill on" title="${esc(sentKeys.join(" "))}">MAMEに送信中<span class="keysent">${sentKeys.length?esc(sentKeys.join(" ")):"—"}</span></span>`;
-  else pill=`<span class="pill">${cfg.options.onlyWhenFront?"MAMEが前面にないので待機中":"待機中"}</span>`;
-  st.innerHTML=game.rom?`<span class="dot on"></span><span>起動中</span><span class="rom">${esc(game.rom)}</span><span class="gt" title="${esc(game.title)}">${esc(game.title)}</span>${pill}`
-    :`<span class="dot"></span><span class="gt">MAMEのゲームは起動していません</span>${pill}`;
+  if(!st.firstElementChild)st.innerHTML=`<div class="st1"><span class="dot"></span><span class="lbl"></span><span class="rom"></span><span class="gt"></span><span class="pill"></span></div><div class="st2"><span class="k">送っているキー</span><span class="keysent"></span></div>`;
+  const q=s=>st.querySelector(s);
+  let pt,pc="pill";
+  if(paused){pt="一時停止中";pc="pill warn"}
+  else if(game.rom&&curGameIsDirect())pt="MAMEが直接読む設定";
+  else if(active){pt="MAMEに送信中";pc="pill on"}
+  else pt=cfg.options.onlyWhenFront?"MAMEが前面になく待機中":"待機中";
+  setCls(q(".dot"),game.rom?"dot on":"dot");
+  setTxt(q(".lbl"),game.rom?"起動中":"");
+  setTxt(q(".rom"),game.rom||"");
+  for(const c of [".lbl",".rom"]){const d=game.rom?"":"none";if(q(c).style.display!==d)q(c).style.display=d}
+  const gt=game.rom?(game.title||""):"MAMEのゲームは起動していません";
+  setTxt(q(".gt"),gt);if(q(".gt").title!==gt)q(".gt").title=gt;
+  setTxt(q(".pill"),pt);setCls(q(".pill"),pc);
+  const ks=(active&&!paused&&sentKeys.length)?sentKeys.join(" "):"なし";
+  const kel=q(".keysent");setTxt(kel,ks);setCls(kel,ks==="なし"?"keysent none":"keysent");if(kel.title!==ks)kel.title=ks;
 }
 function curGameIsDirect(){const g=cfg.games[game.rom];return !!(g&&g.direct)}
 
