@@ -23,7 +23,7 @@ import (
 var indexHTML string
 
 const appName = "連射パネル設定"
-const appVersion = "0.10.2"
+const appVersion = "0.11.0"
 
 type gameInfo struct {
 	Rom   string           `json:"rom"`
@@ -52,6 +52,10 @@ type App struct {
 	devDirty bool
 	quit     chan struct{}
 	info     map[string]*core.GameInputs // ROM名 → MAMEの -listxml から読んだ入力情報
+	plugSent []string                    // プラグインに渡している入力（画面の表示用）
+	usePlug  bool
+	plugRun  string // プラグインが動いているゲームの ROM 名（running.txt）
+	st       stateWriter
 }
 
 func main() {
@@ -135,6 +139,7 @@ func (a *App) exit() {
 	}
 	a.sent = map[string]bool{}
 	a.mu.Unlock()
+	a.st.close()
 	a.flushSave()
 	a.tray.Remove()
 	os.Exit(0)
@@ -191,8 +196,17 @@ func (a *App) loop() {
 				ins = append(ins, core.DevInput{Key: d.Key, Assign: ds.Assign, Controls: d.Pressed, Map: ds.Map, Prof: a.profileFor(prof, d.Key, ds.Layout)})
 			}
 		}
+		reqs := a.eng.Requests(now, ins)
+		usePlug := a.cfg.Options.UsePlugin() && a.cfg.Options.MameDir != ""
+		var plug []core.PluginReq
+		if usePlug {
+			plug, reqs = core.SplitForPlugin(reqs) // MAMEの操作（一時停止など）だけはキーで送る
+			a.st.write(now, a.cfg.Options.MameDir, plug)
+		} else {
+			a.st.close()
+		}
 		want := map[string]bool{}
-		for k := range a.eng.Output(now, ins) {
+		for k := range core.EvalReqs(now, reqs) {
 			pl, fn, _ := strings.Cut(k, ":")
 			if strings.HasPrefix(fn, "SYS:") {
 				pl, fn = "0", fn[4:]
@@ -219,6 +233,11 @@ func (a *App) loop() {
 			}
 		}
 		a.active = active
+		a.usePlug = usePlug
+		a.plugSent = a.plugSent[:0]
+		for _, r := range plug {
+			a.plugSent = append(a.plugSent, core.PlugLabel(r))
+		}
 		dirty := a.devDirty
 		a.devDirty = false
 		a.mu.Unlock()
@@ -314,6 +333,19 @@ func (a *App) detectMame() {
 	if changed {
 		a.devDirty = true
 	}
+	usePlug := a.usePlug
+	a.mu.Unlock()
+	run := ""
+	if usePlug && g.Rom != "" {
+		a.cfg.Lock()
+		dir := a.cfg.Options.MameDir
+		a.cfg.Unlock()
+		if b, err := os.ReadFile(filepath.Join(a.plugDir(dir), "running.txt")); err == nil {
+			run = strings.TrimSpace(string(b))
+		}
+	}
+	a.mu.Lock()
+	a.plugRun = run
 	a.mu.Unlock()
 	if changed {
 		tip := appName
@@ -336,7 +368,8 @@ func (a *App) push(devs []win.DevState, withConfig bool) {
 		sent = append(sent, k)
 	}
 	sort.Strings(sent)
-	st := map[string]interface{}{"game": a.game, "active": a.active, "paused": a.paused, "sent": sent}
+	sent = append(append([]string{}, a.plugSent...), sent...)
+	st := map[string]interface{}{"game": a.game, "active": a.active, "paused": a.paused, "sent": sent, "plugin": a.usePlug, "plugRun": a.plugRun}
 	a.mu.Unlock()
 	var list []devOut
 	for _, d := range devs {
@@ -458,6 +491,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 				return nil, fmt.Errorf("このフォルダに mameui.exe（MAMEUI）がありません。MAMEUIのフォルダを選んでください: %s", dir)
 			}
 			res["inis"] = core.FindInis(dir)
+			res["plugin"] = core.GetPluginInfo(dir)
 		}
 		return res, nil
 	case "mameApply", "mameRestore":
@@ -506,6 +540,13 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 			if err := core.RestoreMameKeys(p.Dir); err == nil {
 				done = append(done, "default.cfg")
 			}
+			if _, err := os.Stat(core.PluginDir(p.Dir)); err == nil {
+				a.st.close()
+				if err := core.UninstallPlugin(p.Dir); err != nil {
+					return done, err
+				}
+				done = append(done, core.PluginDir(p.Dir))
+			}
 			return done, nil
 		}
 		a.cfg.Lock()
@@ -522,7 +563,18 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return append(done, cp), nil
+		done = append(done, cp)
+		a.cfg.Lock()
+		usePlug := a.cfg.Options.UsePlugin()
+		a.cfg.Unlock()
+		if usePlug {
+			pd, err := core.InstallPlugin(p.Dir)
+			if err != nil {
+				return done, err
+			}
+			done = append(done, pd...)
+		}
+		return done, nil
 	case "mameKeys":
 		if arg == "" {
 			return nil, fmt.Errorf("先にMAMEのフォルダを指定してください")

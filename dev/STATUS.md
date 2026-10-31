@@ -1,6 +1,6 @@
 # 引き継ぎ（STATUS） — 連射パネル設定（ShotPanel）
 
-最終更新：2026-10-31（v0.10.2 公開）
+最終更新：2026-10-31（v0.11.0 作成。公開はユーザー確認待ち）
 
 新しい会話では、このリポジトリ（hknroms/shotpanel）をつないで、まず CLAUDE.md とこのファイルを読む。
 
@@ -13,6 +13,7 @@
 - **v0.10.1（2026-10-30 公開）**：①上の帯を2段・高さ固定（1段目＝ゲームと状態、2段目＝送っているキー。毎回作り直さず文字だけ書き換える）。v0.10.0 でも入力が多いと微妙に動くとの報告（Windows でのフォントの違いで1px前後ずれると推測。Linux の Chromium では再現せず）。②新しくつないだコントローラーの配置の初期値を常に 8bs（右端にスタート）に（2026-10-30 ユーザー決定。以前は XInput・パッドだと "pad"）。
 - 2026-10-30：作業用アカウントを shotpanel の共同編集者に追加（それまでは Claude の会話から push できなかった）。
 - **v0.10.2（2026-10-31 公開）**：揺れの本当の原因が分かった。v0.10.1 を起動しても、常駐していた古い版（v0.9.x。「MAMEに送信中：キー」の1つの枠が折り返して画面全体が上下に動く）の画面が出ていただけだった（1つしか起動しない仕組みで、2つ目は先の方に「画面を出して」と送って終わる）。直したこと：①別の場所の exe が常駐していたら WMQuit（wmApp+3）を送り、2秒で終わらなければ強制終了して入れ替わる。新しい側に shotpanel.json が無ければ古い側から写す。②状況（送信中・送っているキー）をゲーム名の帯の下の独立した箱（#sendbox、高さ36px固定）に（ユーザー希望）。③ウィンドウのタイトルと下の帯に版（appVersion）を表示。
+- **v0.11.0（2026-10-31 作成）**：「MAMEへの送り方」に**プラグイン**を追加（Options.Output = "plugin"。初期値はキー送信のまま）。きっかけ：MAMEで敵が多い場面だと30・20連射が効かなくなる（ユーザー報告。速度%は未確認）。キー送信はPCの時計（1/60秒）で押し離しするので、MAMEが重い・ゲームのリフレッシュが60Hzでないとフレームとずれる。プラグインはMAMEのフレームごとに押し離しするのでずれない。ただし**ゲーム自体の処理落ち（2フレームに1回しか入力を読まない）では30連射は本物の基板でも効かない**ので、それは直らない（ユーザーに説明済み・readme にも記載）。実機での確認はまだ。
 - 使っているのはユーザーと友人だけ。配布ページはログインなしで誰でも見られる（ログインの仕組みは残してある。後述）。
 
 ## 2. このソフトは何か
@@ -33,6 +34,20 @@ MAMEUI のソース（github.com/Robbbert/mameui の `src/osd/winui/`）で確�
 - MAMEUI のウィンドウタイトル：`Raiden [raiden] - MAMEUI 0.289 (LLP64)`（appname が MAMEUI）。
 - keyboardprovider が auto（＝rawinput）のままだと、ソフトから送ったキー（SendInput）を MAME は受け取らない。dinput か win32 にする必要がある。ユーザーの環境は今 **win32** 設定で動いている。
 - MAME の「入力設定」で「デフォルトに戻す」をすると、キーボード＋パッド両方の初期割り当てに戻り、MAME がパッドも直接読んで二重に動く。このソフトは cfg\default.cfg に1P・2Pの全部の入力を「キーボードだけ」と書いてこれを防ぐ（joystick は 1 のまま＝アナログのゲームはそのまま遊べる）。
+
+### プラグインについて分かったこと（MAMEUI tag289 のソースで確認）
+- プラグインは pluginspath（初期値 `plugins`、MAMEUI の SetDirectories では設定しない＝mame.ini か初期値）の下の `<名前>/plugin.json`。`plugins\boot.lua` が無いとプラグインは1つも動かない（MAMEUI の配布物に入っているはずだが、無ければこのソフトが入れる）。
+- 有効かどうか：plugin.json の "start"（このソフトは "true"）→ `GetIniDir()`（MAMEUI の ini フォルダ）の **plugin.ini** で上書き → mame.ini の plugin / noplugin。MAMEUI はグローバルの plugin・noplugin は使わず plugin.ini を書く（mui_plug.cpp）。このソフトは plugin.ini に `shotpanel 1` を書く（元のファイルは .shotpanel-backup）。
+- Lua：`emu.add_machine_frame_notifier` で毎フレーム、`ioport_field:set_value(1)`／`clear_value()` で押す・離す。set_value は**本来の入力（キー・パッド）と OR** される（ioport.cpp frame_update）ので、プラグインのときは ShotPanel はゲームの入力のキーを送らない。MAME 付属の autofire プラグインも同じ作り。
+- 入力名は `ioport:input_type_to_token(field.type, field.player)`（P1_BUTTON1・P2_JOYSTICK_UP・START1・COIN1・SERVICE1 など）。core.PortType と同じ名前。
+- UI_ の操作（一時停止・リセット・クイックセーブなど）はポートではないので、プラグインのときもキーで送る（core.SplitForPlugin）。
+
+### プラグイン方式のしくみ（v0.11.0〜）
+- ShotPanel → プラグイン：`plugins\shotpanel\state.txt`（4096バイト固定、開いたまま先頭から上書き。変わったときと0.25秒ごと）。中身は `SHOTPANEL 1 <seq>` / `R <番号> <押すF> <離すF> <行き先,..> <交互の行き先 or ->` / `E <seq>`。seq が先頭と終わりで違えば書きかけなので読み飛ばす。180フレーム seq が変わらなければ全部離す（ShotPanel が止まったとき）。
+- 番号（core.Req.N）は押し始めごとに変わる。プラグインは新しい番号を見たら1フレーム目（押す）から数える＝押した瞬間に必ず出る。
+- プラグインはゲーム開始で `running.txt`（ROM名）を書き、終了で消す。ShotPanel は起動中のゲームと一致すれば「プラグインで送信中」、違えば「プラグインが動いていません」。
+- コード：core/engine.go（Requests・EvalReqs）、core/plugin.go（入れる・外す・state の形）、core/mameplugin/（init.lua・plugin.json・boot.lua を埋め込み）、statewriter.go。
+- 試験：Lua は Linux の liblua5.4 に小さなCのホスト（/tmp で gcc）を作り、manager/emu を差し替えて動かした（連射の位相・交互連打・書きかけ・止まったとき）。
 
 ## 4. 構成（src/）
 
@@ -80,7 +95,7 @@ GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o S
 
 ## 7. まだやっていないこと・候補
 
-- **MAME4droid（Android）版**：ユーザー希望。Android ではほかのアプリにキーを送れないので、MAME の Lua プラグイン（MAME4droid は 0.289 ベース）で連射・割り当てをやる案。プラグインの読み込みができるか、ユーザーにバージョンと plugins フォルダの有無を確かめてもらう段階で止まっている。同じプラグインは PC の MAMEUI でも使える可能性がある（キー送信が要らず、フレームに完全同期）。
+- **MAME4droid（Android）版**：ユーザー希望。Android ではほかのアプリにキーを送れないので、MAME の Lua プラグイン（MAME4droid は 0.289 ベース）で連射・割り当てをやる案。プラグインの読み込みができるか、ユーザーにバージョンと plugins フォルダの有無を確かめてもらう段階で止まっている。PC の MAMEUI では v0.11.0 でプラグイン方式を作った（core/mameplugin）。Android 版はこれを土台にできる（ただし Android ではコントローラーを MAME が直接読むので、割り当ての読み方は別に考える必要がある）。
 - 2レバー（右スティックを2本目のレバーに）：後から足す候補。
 - トラックボール・ダイヤル・ハンドルは扱わない（MAME が直接読む）。
 - ソフト本体の英語化：未対応（提案済み・返事なし）。

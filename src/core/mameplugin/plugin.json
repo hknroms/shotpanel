@@ -1,0 +1,10 @@
+{
+	"plugin": {
+		"name": "shotpanel",
+		"description": "ShotPanel: frame-synced rapid fire and button mapping",
+		"version": "1.0.0",
+		"author": "hknroms",
+		"type": "plugin",
+		"start": "true"
+	}
+}

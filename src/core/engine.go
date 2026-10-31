@@ -2,6 +2,7 @@ package core
 
 import (
 	"math"
+	"sort"
 	"strings"
 	"time"
 )
@@ -60,28 +61,70 @@ type DevInput struct {
 	Prof     *DevProfile
 }
 
-// Engine は押しっぱなしの開始時刻を覚えて、出すべきキーを計算する。
-type Engine struct {
-	since map[string]time.Time
+// Req は「押されている1つの入力」が出したい出力。連射のパターンと行き先を持つ。
+// MAMEのプラグインには、これをそのまま渡してフレームに合わせて押し離しさせる。
+type Req struct {
+	N     uint64    // 押し始めごとに変わる番号（プラグインはこれが変わったら1フレーム目から数え直す）
+	Start time.Time // 押し始めた時刻
+	On    int       // 押すフレーム数
+	Off   int       // 離すフレーム数（0 = 押しっぱなし）
+	A     []string  // 行き先（"1:B1" "2:UP" "1:SYS:SERVICE1" など）
+	B     []string  // 交互連打のときの、1周期おきの行き先（それ以外は空）
 }
 
-func NewEngine() *Engine { return &Engine{since: map[string]time.Time{}} }
+type press struct {
+	t time.Time
+	n uint64
+}
 
-// Output は「どのプレイヤーのどの機能を押すか」の集合（"1:B1" など）を返す。
+// Engine は押しっぱなしの開始時刻を覚えて、出すべき出力を計算する。
+type Engine struct {
+	since map[string]press
+	next  uint64
+}
+
+func NewEngine() *Engine { return &Engine{since: map[string]press{}} }
+
+// Output は「どのプレイヤーのどの機能を押すか」の集合（"1:B1" など）を返す（PCの時計で連射する）。
 func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
+	return EvalReqs(now, e.Requests(now, devs))
+}
+
+// EvalReqs は PC の時計（1F=1/60秒）で、いま押すべき出力を決める。
+func EvalReqs(now time.Time, reqs []Req) map[string]bool {
 	out := map[string]bool{}
+	for _, r := range reqs {
+		el := now.Sub(r.Start)
+		if r.Off > 0 && !TurboOnF(el, r.On, r.Off) {
+			continue
+		}
+		t := r.A
+		if len(r.B) > 0 && (int(el/frame)/(r.On+r.Off))%2 == 1 {
+			t = r.B
+		}
+		for _, x := range t {
+			out[x] = true
+		}
+	}
+	return out
+}
+
+// Requests は押されている入力ごとの出力（連射のパターン付き）を返す。
+func (e *Engine) Requests(now time.Time, devs []DevInput) []Req {
+	var reqs []Req
 	seen := map[string]bool{}
-	held := func(id string, pressed bool) (time.Duration, bool) {
+	held := func(id string, pressed bool) (press, bool) {
 		if !pressed {
-			return 0, false
+			return press{}, false
 		}
 		seen[id] = true
-		t, ok := e.since[id]
+		p, ok := e.since[id]
 		if !ok {
-			t = now
-			e.since[id] = now
+			e.next++
+			p = press{now, e.next}
+			e.since[id] = p
 		}
-		return now.Sub(t), true
+		return p, true
 	}
 	for _, d := range devs {
 		if d.Assign != 1 && d.Assign != 2 || d.Prof == nil {
@@ -93,12 +136,13 @@ func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
 			if c.Mode == "off" || c.Mode == "" {
 				return
 			}
-			el, p := held(id, pressed)
-			if !p {
+			p, ok := held(id, pressed)
+			if !ok {
 				return
 			}
-			if on, off := PatternOf(c.Speed, c.On, c.Off); c.Mode == "turbo" && !TurboOnF(el, on, off) {
-				return
+			r := Req{N: p.n, Start: p.t, On: 1}
+			if c.Mode == "turbo" {
+				r.On, r.Off = PatternOf(c.Speed, c.On, c.Off)
 			}
 			op := pl
 			if c.Other {
@@ -106,11 +150,21 @@ func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
 			}
 			for _, t := range strings.Split(c.Target, "+") {
 				if t != "" {
-					out[itoa(op)+":"+t] = true
+					r.A = append(r.A, itoa(op)+":"+t)
 				}
 			}
+			if len(r.A) > 0 {
+				reqs = append(reqs, r)
+			}
 		}
-		for pos, ctl := range d.Map {
+		// 位置の順に並べる（毎回同じ順にするため）
+		poss := make([]string, 0, len(d.Map))
+		for pos := range d.Map {
+			poss = append(poss, pos)
+		}
+		sort.Strings(poss)
+		for _, pos := range poss {
+			ctl := d.Map[pos]
 			if c, ok := d.Prof.Cfg[pos]; ok && ctl != "" {
 				emit(d.Key+"/"+pos, c, d.Controls[ctl])
 			}
@@ -136,17 +190,10 @@ func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
 			if !altAxisLR {
 				a, b = "up", "down"
 			}
-			el, p := held(d.Key+"/alt", d.Controls[a] || d.Controls[b])
-			if p {
+			if p, ok := held(d.Key+"/alt", d.Controls[a] || d.Controls[b]); ok {
 				on, off := PatternOf(alt.Speed, alt.POn, alt.POff)
-				f := int(el/frame) / (on + off) // 1周期ごとに方向を入れ替える
-				dir := a
-				if f%2 == 1 {
-					dir = b
-				}
-				if TurboOnF(el, on, off) {
-					out[itoa(pl)+":"+strings.ToUpper(dir)] = true
-				}
+				reqs = append(reqs, Req{N: p.n, Start: p.t, On: on, Off: off,
+					A: []string{itoa(pl) + ":" + strings.ToUpper(a)}, B: []string{itoa(pl) + ":" + strings.ToUpper(b)}})
 			}
 		}
 	}
@@ -155,7 +202,7 @@ func (e *Engine) Output(now time.Time, devs []DevInput) map[string]bool {
 			delete(e.since, k)
 		}
 	}
-	return out
+	return reqs
 }
 
 func itoa(i int) string {

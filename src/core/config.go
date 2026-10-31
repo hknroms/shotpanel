@@ -58,7 +58,11 @@ type Options struct {
 	OnlyWhenFront bool   `json:"onlyWhenFront"`
 	MameDir       string `json:"mameDir"`
 	KbdProvider   string `json:"kbdProvider"` // dinput（標準）/ win32
+	Output        string `json:"output"`      // MAMEへの送り方："key"（キー送信。空も同じ）/ "plugin"（MAMEのプラグインでフレームに合わせる）
 }
+
+// UsePlugin は MAME のプラグインで送る設定か。
+func (o Options) UsePlugin() bool { return o.Output == "plugin" }
 
 // Config はファイルに保存する全体。
 type Config struct {
