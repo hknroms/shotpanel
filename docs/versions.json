@@ -1,6 +1,23 @@
 {
  "versions": [
   {
+   "version": "0.11.2",
+   "date": "2026-11-01",
+   "title": "プラグインがゲームの中で動いていなかったのを直した",
+   "changes": [
+    "プラグインが、MAMEUIのプラグイン一覧には出るのに、ゲームの中で動いていなかった（「プラグインが動いていません」のままだった）のを直した",
+    "古い版のプラグインが入っているときは、このソフトを起動したときに自動で入れ替える（「プラグインを入れる」を押し直さなくてよい）"
+   ],
+   "file": "files/ShotPanel_v0.11.2.zip",
+   "en": {
+    "title": "Fixed the plugin not running inside games",
+    "changes": [
+     "Fixed the plugin being listed in MAMEUI but never running inside games (the status stayed at \"plugin not running\")",
+     "An older installed plugin is now replaced automatically when ShotPanel starts, so there is no need to install it again"
+    ]
+   }
+  },
+  {
    "version": "0.11.1",
    "date": "2026-11-01",
    "title": "「プラグインの設定ガイド」を追加",
