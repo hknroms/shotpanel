@@ -1,6 +1,25 @@
 {
  "versions": [
   {
+   "version": "0.10.2",
+   "date": "2026-10-31",
+   "title": "前の版が常駐していたら入れ替わる／送信中の表示を別の枠に／版の番号を表示",
+   "changes": [
+    "前の版が常駐したまま新しい版を起動すると、前の版の画面が出ていたのを直した。別の場所の ShotPanel が常駐していたら終わらせて入れ替わる。新しい版のフォルダに shotpanel.json が無いときは前の版の設定を写す",
+    "「MAMEに送信中」と送っているキーを、ゲーム名の帯の下の別の枠に分けた（高さ固定）",
+    "ウィンドウのタイトルと画面の下に版の番号を出すようにした"
+   ],
+   "file": "files/ShotPanel_v0.10.2.zip",
+   "en": {
+    "title": "Replaces an older running copy / sending status in its own box / shows the version",
+    "changes": [
+     "Starting a new version while an older one was still running in the tray just showed the old window. Now a ShotPanel running from another folder is closed and replaced; if the new folder has no shotpanel.json, the old settings are copied over",
+     "\"Sending to MAME\" and the keys being sent now have their own fixed-height box below the game bar",
+     "The window title and the bottom bar now show the version number"
+    ]
+   }
+  },
+  {
    "version": "0.10.1",
    "date": "2026-10-30",
    "title": "上の帯を2段・高さ固定にした／配置の初期値を「8ボタン＋右端にスタート」にした",
