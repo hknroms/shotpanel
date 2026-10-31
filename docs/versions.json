@@ -1,6 +1,27 @@
 {
  "versions": [
   {
+   "version": "0.11.1",
+   "date": "2026-11-01",
+   "title": "「プラグインの設定ガイド」を追加",
+   "changes": [
+    "MAMEへの送り方を「プラグイン」にすると「プラグインの設定ガイド」が出る。MAMEUIを閉じる → プラグインを入れる → MAMEUIの LUA タブで shotpanel が有効か見る → ゲームを起動する → つながったか確かめる → 連射を試す、を1つずつ案内する",
+    "MAMEUIが閉じているか、プラグインが入ったか、ゲームで読み込まれたか、このソフトとつながったかは自動で確かめて ✓ を付ける。うまくいかないときは見直す所を出す",
+    "つながっているときは、MAMEの速さ（1秒あたりのフレーム数と、ゲーム本来の速さに対する%）を出す",
+    "ゲーム中に Tab →「Plugin Options」→「ShotPanel」で、プラグインの状態を見られる"
+   ],
+   "file": "files/ShotPanel_v0.11.1.zip",
+   "en": {
+    "title": "New plugin setup guide",
+    "changes": [
+     "Choosing \"Plugin\" as the output now opens a step-by-step plugin setup guide: close MAMEUI, install the plugin, check that shotpanel is enabled in MAMEUI's LUA tab, start a game, check the link, try rapid fire",
+     "Steps that can be checked automatically (MAMEUI closed, plugin installed, loaded in the game, linked to ShotPanel) are ticked automatically, with hints when something is wrong",
+     "While linked, shows MAME's speed (frames per second and percent of the game's native rate)",
+     "The plugin's status can be seen in-game under Tab → Plugin Options → ShotPanel"
+    ]
+   }
+  },
+  {
    "version": "0.11.0",
    "date": "2026-10-31",
    "title": "「MAMEへの送り方」にプラグインを追加（MAMEのフレームに合わせて連射）",
