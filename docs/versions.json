@@ -1,6 +1,27 @@
 {
  "versions": [
   {
+   "version": "0.11.0",
+   "date": "2026-10-31",
+   "title": "「MAMEへの送り方」にプラグインを追加（MAMEのフレームに合わせて連射）",
+   "changes": [
+    "「MAMEUIの設定」に「MAMEへの送り方」を追加。「プラグイン」にすると、MAMEUIにこのソフトのプラグインを入れて、MAMEUIの中で1フレームずつ押し離しする。PCが重いときや、ゲームの画面の回数が1秒60回ちょうどでないときも、30・20連射がずれない",
+    "これまでの「キー送信」と切り替えられる（初期値はキー送信）。プラグインでも、MAMEの操作（一時停止・リセットなど）はキーで送る",
+    "プラグインが動いていると、画面の上に「プラグインで送信中」と出る。読み込まれていないときは「プラグインが動いていません」と出る",
+    "「元に戻す」で、入れたプラグインも外す"
+   ],
+   "file": "files/ShotPanel_v0.11.0.zip",
+   "en": {
+    "title": "New \"plugin\" output: rapid fire synced to MAME frames",
+    "changes": [
+     "Added \"How to send to MAME\" in the MAMEUI settings. With \"Plugin\", ShotPanel installs its own Lua plugin into MAMEUI, which presses and releases buttons frame by frame inside MAME, so 30/20 shots-per-second rapid fire stays exact even when the PC is busy or the game does not run at exactly 60 frames per second",
+     "You can switch back to the old \"Key sending\" (still the default). MAME UI actions (pause, reset, etc.) are still sent as keys",
+     "The status bar shows \"Sending via plugin\" when the plugin is active, and warns when it is not loaded",
+     "\"Restore\" also removes the plugin"
+    ]
+   }
+  },
+  {
    "version": "0.10.2",
    "date": "2026-10-31",
    "title": "前の版が常駐していたら入れ替わる／送信中の表示を別の枠に／版の番号を表示",
