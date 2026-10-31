@@ -1,6 +1,6 @@
 # 引き継ぎ（STATUS） — 連射パネル設定（ShotPanel）
 
-最終更新：2026-11-01（v0.11.1 公開）
+最終更新：2026-11-01（v0.11.2 作成。公開はユーザー確認待ち）
 
 新しい会話では、このリポジトリ（hknroms/shotpanel）をつないで、まず CLAUDE.md とこのファイルを読む。
 
@@ -15,6 +15,7 @@
 - **v0.10.2（2026-10-31 公開）**：揺れの本当の原因が分かった。v0.10.1 を起動しても、常駐していた古い版（v0.9.x。「MAMEに送信中：キー」の1つの枠が折り返して画面全体が上下に動く）の画面が出ていただけだった（1つしか起動しない仕組みで、2つ目は先の方に「画面を出して」と送って終わる）。直したこと：①別の場所の exe が常駐していたら WMQuit（wmApp+3）を送り、2秒で終わらなければ強制終了して入れ替わる。新しい側に shotpanel.json が無ければ古い側から写す。②状況（送信中・送っているキー）をゲーム名の帯の下の独立した箱（#sendbox、高さ36px固定）に（ユーザー希望）。③ウィンドウのタイトルと下の帯に版（appVersion）を表示。
 - **v0.11.0（2026-10-31 公開）**：「MAMEへの送り方」に**プラグイン**を追加（Options.Output = "plugin"。初期値はキー送信のまま）。きっかけ：MAMEで敵が多い場面だと30・20連射が効かなくなる（ユーザー報告。速度%は未確認）。キー送信はPCの時計（1/60秒）で押し離しするので、MAMEが重い・ゲームのリフレッシュが60Hzでないとフレームとずれる。プラグインはMAMEのフレームごとに押し離しするのでずれない。ただし**ゲーム自体の処理落ち（2フレームに1回しか入力を読まない）では30連射は本物の基板でも効かない**ので、それは直らない（ユーザーに説明済み・readme にも記載）。実機での確認はまだ。
 - **v0.11.1（2026-11-01 公開）**：「プラグインの設定ガイド」（ユーザー希望：MAME側の設定をしていないときにチュートリアルを出し、やったか確認するステップ）。送り方をプラグインにすると #plugGuide に出る。6手順：①MAMEUIを閉じる（自動：mameInfo.appOpen＝win.MameAppOpen）②プラグインを入れる（自動：plugin.ready＋mameState ready）③MAMEUIの Options → Default System Options... → LUA タブで「Enable internal LUA plugins」と「Enabled plugins」に shotpanel（手動で「確かめた」。ゲームで読み込まれたら自動で済み）④ゲーム起動（自動：running.txt）⑤つながり（自動：ack.txt）⑥連射を試す（手動）。済んだ手動の手順は Options.PlugGuide（lua/linked/fire）に保存。うまくいかないときの見直す所（ゲーム別 Properties の LUA タブ、フォルダ違い、一時停止など）を出す。プラグインは30フレームごとに ack.txt（ROM名 受け取ったseq フレーム数 画面Hz）を書き、ShotPanel はファイルの更新時刻で1秒あたりのフレーム数を測って「MAMEの速さ %」を出す。ゲーム中の Tab → Plugin Options → ShotPanel にも状態を出す（emu.register_menu）。
+- **v0.11.2（2026-11-01 作成）**：ユーザーの実機で「MAMEのプラグイン一覧に shotpanel はあるが、プラグインが動いていませんのまま」。原因：`emu.add_machine_*_notifier` が返す登録（notifier_subscription）を startplugin の中の local にしか持っていなかった。**登録は捨てられる（GC）と外れる**（src/lib/util/notifier.h「unsubscribes on destruction」）ので、リセット・フレーム・終了の通知が来ず、running.txt も書かれず連射もされなかった。メニュー（register_menu）は登録の形が違うので出ていた。直したこと：登録をモジュールの変数（subscriptions）に持つ。念のため、リセットの通知が来なくても最初のフレームで準備（start）する。入っている古いプラグインは ShotPanel の起動時と mameInfo で自動で入れ替える（core.UpdatePluginFiles）。Lua の試験を dev/plugintest に置いた（GC で登録が外れるのも再現。古いコードはここで失敗する）。
 - 使っているのはユーザーと友人だけ。配布ページはログインなしで誰でも見られる（ログインの仕組みは残してある。後述）。
 
 ## 2. このソフトは何か
@@ -49,7 +50,7 @@ MAMEUI のソース（github.com/Robbbert/mameui の `src/osd/winui/`）で確�
 - 番号（core.Req.N）は押し始めごとに変わる。プラグインは新しい番号を見たら1フレーム目（押す）から数える＝押した瞬間に必ず出る。
 - プラグインはゲーム開始で `running.txt`（ROM名）を書き、終了で消す。ShotPanel は起動中のゲームと一致すれば「プラグインで送信中」、違えば「プラグインが動いていません」。
 - コード：core/engine.go（Requests・EvalReqs）、core/plugin.go（入れる・外す・state の形）、core/mameplugin/（init.lua・plugin.json・boot.lua を埋め込み）、statewriter.go。
-- 試験：Lua は Linux の liblua5.4 に小さなCのホスト（/tmp で gcc）を作り、manager/emu を差し替えて動かした（連射の位相・交互連打・書きかけ・止まったとき）。
+- 試験：dev/plugintest（Linux の liblua5.4 に小さなCのホストを作り、manager/emu を差し替えて動かす。連射の位相・交互連打・書きかけ・止まったとき・GC で登録が外れること）。**Lua で通知を登録したら、返り値を必ずモジュールの変数に持つこと。**
 
 ## 4. 構成（src/）
 

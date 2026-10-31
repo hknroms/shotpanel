@@ -295,3 +295,25 @@ func ParseAck(b []byte) (Ack, bool) {
 	}
 	return a, true
 }
+
+// UpdatePluginFiles は、入っているプラグインが古ければファイルだけ入れ替える（MAMEUI が開いていても大丈夫。ゲームを始めるときに読まれる）。
+// プラグインがまだ入っていないときは何もしない。入れ替えたら true。
+func UpdatePluginFiles(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	pd := PluginDir(dir)
+	if !fileExists(filepath.Join(pd, "plugin.json")) {
+		return false
+	}
+	updated := false
+	for n, want := range pluginFiles() {
+		p := filepath.Join(pd, n)
+		if b, err := os.ReadFile(p); err != nil || !bytes.Equal(normNL(b), normNL(want)) {
+			if os.WriteFile(p, want, 0644) == nil {
+				updated = true
+			}
+		}
+	}
+	return updated
+}

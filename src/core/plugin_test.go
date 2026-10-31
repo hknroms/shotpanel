@@ -162,3 +162,21 @@ func TestParseAck(t *testing.T) {
 		t.Fatal("short")
 	}
 }
+
+func TestUpdatePluginFiles(t *testing.T) {
+	dir := t.TempDir()
+	if UpdatePluginFiles(dir) {
+		t.Fatal("not installed: nothing to do")
+	}
+	InstallPlugin(dir)
+	os.WriteFile(filepath.Join(PluginDir(dir), "init.lua"), []byte("-- old"), 0644)
+	if GetPluginInfo(dir).Ready {
+		t.Fatal("old file should not be ready")
+	}
+	if !UpdatePluginFiles(dir) || !GetPluginInfo(dir).Ready {
+		t.Fatal("should update")
+	}
+	if UpdatePluginFiles(dir) {
+		t.Fatal("already new")
+	}
+}

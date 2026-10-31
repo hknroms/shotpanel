@@ -19,6 +19,10 @@ local exports = {
 local shotpanel = exports
 local folder = nil
 
+-- 通知の登録（add_machine_*_notifier が返すもの）は、捨てられる（ガベージコレクションされる）と外れてしまう。
+-- なので、ずっと残るここ（モジュールの変数）に持っておく。
+local subscriptions = {}
+
 function shotpanel.set_folder(path)
 	folder = path
 end
@@ -35,7 +39,7 @@ function shotpanel.startplugin()
 	local lastseq = nil
 	local stale = 0       -- seq が変わらないフレーム数（ShotPanel が止まったら離す）
 	local active = {}     -- いま押している入力名
-	local subs = {}
+	local started = false -- このゲームで準備（start）が済んだか
 	local frames = 0      -- ゲームを始めてからのフレーム数
 	local rom = ''
 	local hz = 0          -- ゲームの画面の回数（1秒あたり。例：ネオジオは約59.19）
@@ -142,7 +146,12 @@ function shotpanel.startplugin()
 		end
 	end
 
+	local start
+
 	local function process_frame()
+		if not started then
+			start() -- リセットの通知が来なかったときも、ここで準備する
+		end
 		frames = frames + 1
 		if frames % 30 == 0 then
 			write_ack()
@@ -187,7 +196,8 @@ function shotpanel.startplugin()
 		active = want
 	end
 
-	local function start()
+	start = function ()
+		started = true
 		build_fields()
 		lastseq = nil
 		stale = 0
@@ -207,6 +217,7 @@ function shotpanel.startplugin()
 	end
 
 	local function stop()
+		started = false
 		release_all()
 		if fh then
 			fh:close()
@@ -234,9 +245,9 @@ function shotpanel.startplugin()
 		emu.register_menu(menu_callback, menu_populate, 'ShotPanel')
 	end
 
-	subs.reset = emu.add_machine_reset_notifier(start)
-	subs.frame = emu.add_machine_frame_notifier(process_frame)
-	subs.stop = emu.add_machine_stop_notifier(stop)
+	subscriptions.reset = emu.add_machine_reset_notifier(start)
+	subscriptions.frame = emu.add_machine_frame_notifier(process_frame)
+	subscriptions.stop = emu.add_machine_stop_notifier(stop)
 end
 
 return exports

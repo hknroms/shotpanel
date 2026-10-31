@@ -23,7 +23,7 @@ import (
 var indexHTML string
 
 const appName = "連射パネル設定"
-const appVersion = "0.11.1"
+const appVersion = "0.11.2"
 
 type gameInfo struct {
 	Rom   string           `json:"rom"`
@@ -91,6 +91,7 @@ func main() {
 	}
 	a.in.Start(func(h uintptr) { a.tray.Add(h, appName) })
 	win.TimeBeginPeriod()
+	core.UpdatePluginFiles(a.cfg.Options.MameDir) // 古い版のプラグインが入っていたら入れ替える
 	go a.loop()
 
 	startHidden := false
@@ -500,6 +501,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 				return nil, fmt.Errorf("このフォルダに mameui.exe（MAMEUI）がありません。MAMEUIのフォルダを選んでください: %s", dir)
 			}
 			res["inis"] = core.FindInis(dir)
+			core.UpdatePluginFiles(dir) // 古い版のプラグインが入っていたら入れ替える
 			res["plugin"] = core.GetPluginInfo(dir)
 		}
 		return res, nil
