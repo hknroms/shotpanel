@@ -36,6 +36,9 @@ function shotpanel.startplugin()
 	local stale = 0       -- seq が変わらないフレーム数（ShotPanel が止まったら離す）
 	local active = {}     -- いま押している入力名
 	local subs = {}
+	local frames = 0      -- ゲームを始めてからのフレーム数
+	local rom = ''
+	local hz = 0          -- ゲームの画面の回数（1秒あたり。例：ネオジオは約59.19）
 
 	local function split(s)
 		local t = {}
@@ -129,7 +132,21 @@ function shotpanel.startplugin()
 		reqs = new
 	end
 
+	-- ack.txt：ShotPanel への返事（30フレームごと）。「ROM名 受け取ったseq フレーム数 画面の回数」
+	-- ShotPanel はこれで「つながった」と「1秒あたりのフレーム数（MAMEの速さ）」を知る。
+	local function write_ack()
+		local f = io.open(folder .. '/ack.txt', 'w')
+		if f then
+			f:write(rom .. ' ' .. (lastseq or '0') .. ' ' .. frames .. ' ' .. string.format('%.3f', hz) .. '\n')
+			f:close()
+		end
+	end
+
 	local function process_frame()
+		frames = frames + 1
+		if frames % 30 == 0 then
+			write_ack()
+		end
 		read_state()
 		if stale > 180 then
 			-- ShotPanel から3秒ほど何も来ない（終了した・止まった）ので全部離す
@@ -176,7 +193,17 @@ function shotpanel.startplugin()
 		stale = 0
 		reqs = {}
 		active = {}
-		mark(emu.romname() .. '\n')
+		frames = 0
+		rom = emu.romname()
+		hz = 0
+		pcall(function ()
+			for _, scr in pairs(manager.machine.screens) do
+				hz = scr.refresh
+				break
+			end
+		end)
+		mark(rom .. '\n')
+		write_ack()
 	end
 
 	local function stop()
@@ -186,6 +213,25 @@ function shotpanel.startplugin()
 			fh = nil
 		end
 		os.remove(folder .. '/running.txt')
+		os.remove(folder .. '/ack.txt')
+	end
+
+	-- ゲーム中のメニュー（Tab →「Plugin Options」→「ShotPanel」）に状態を出す
+	local function menu_populate()
+		local linked = lastseq ~= nil and stale < 60
+		local n = 0
+		for _ in pairs(reqs) do n = n + 1 end
+		return {
+			{ 'ShotPanel', '', 'off' },
+			{ 'Plugin', 'loaded', 'off' },
+			{ 'Link to ShotPanel', linked and 'OK' or 'waiting', 'off' },
+			{ 'Inputs from ShotPanel', tostring(n), 'off' } }
+	end
+	local function menu_callback(index, event)
+		return false
+	end
+	if emu.register_menu then
+		emu.register_menu(menu_callback, menu_populate, 'ShotPanel')
 	end
 
 	subs.reset = emu.add_machine_reset_notifier(start)

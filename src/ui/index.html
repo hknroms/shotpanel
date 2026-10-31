@@ -57,6 +57,12 @@ input[type=text]{min-width:0;flex:1}
 .step.cur .n{background:var(--accent);border-color:var(--accent);color:#111}
 .step.done .t{color:var(--muted)}
 .step .t small{display:block;color:var(--muted);font-size:11.5px}
+.pgbody{grid-column:2/4;background:var(--panel2);border-radius:6px;padding:8px 12px;font-size:12.5px;line-height:1.7}
+.pgbody ol,.pgbody ul{margin:4px 0;padding-left:1.4em}
+.pgbody .row{margin-top:6px;flex-wrap:wrap}
+.pgbody b.ui{font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-weight:400}
+.pghelp{border-left:3px solid var(--warn);padding-left:10px;margin-top:6px}
+.step.ng .n{background:var(--warn);border-color:var(--warn);color:#111}
 .notice{background:var(--panel2);border:1px dashed var(--muted);border-radius:8px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 
 /* コントローラー */
@@ -231,6 +237,7 @@ input[type=text]{min-width:0;flex:1}
     <div class="sendbox" id="sendbox"></div>
   </div>
   <div id="setup"></div>
+  <div id="plugGuide"></div>
   <div>
   </div>
   <div class="editbar" id="editbar"></div>
@@ -311,7 +318,7 @@ const PRESETS=GROUPS.flatMap(g=>g.items.map(p=>Object.assign(p,{neo:!!g.neo})));
 const lab=(t,neo)=>t.split("+").map(x=>neo&&/^B[1-4]$/.test(x)?"ABCD"[+x.slice(1)-1]:(/^B\d+$/.test(x)?x.slice(1):x)).join("+");
 
 /* ---------- 状態 ---------- */
-let sentKeys=[],usePlug=false,plugRun="";let cfg=null, devs=[], game={rom:""}, active=false, paused=false, keyNames=[], autostart=false;
+let sentKeys=[],usePlug=false,plugRun="",link={};let cfg=null, devs=[], game={rom:""}, active=false, paused=false, keyNames=[], autostart=false;
 let view=null, editKey=null, editManual=false;
 const ui={presetOpen:false,gOpen:{},sel:null,learn:null,mame:null};
 const $=s=>document.querySelector(s);
@@ -424,10 +431,11 @@ function renderStatus(){
   setTxt(q(".gt"),gt);if(q(".gt").title!==gt)q(".gt").title=gt;
   setTxt(r(".pill"),pt);setCls(r(".pill"),pc);
   setTxt(r(".k"),usePlug?"送っている入力":"送っているキー");
-  const ptip=pc==="pill warn"&&usePlug?"このゲームでプラグインが読み込まれていません。MAMEUIを閉じて「MAMEUIの設定」の「このソフト用にする」を押してから、ゲームを起動し直してください":"";if(r(".pill").title!==ptip)r(".pill").title=ptip;
+  const ptip=pc==="pill warn"&&usePlug?"このゲームでプラグインが読み込まれていません。押すと「プラグインの設定ガイド」を開きます":"";if(r(".pill").title!==ptip)r(".pill").title=ptip;
   const ks=(active&&!paused&&sentKeys.length)?sentKeys.join(" "):"なし";
   const kel=r(".keysent");setTxt(kel,ks);setCls(kel,ks==="なし"?"keysent none":"keysent");if(kel.title!==ks)kel.title=ks;
 }
+$("#sendbox").addEventListener("click",()=>{if(usePlug&&$("#sendbox .pill.warn"))openPlugGuide()});
 function curGameIsDirect(){const g=cfg.games[game.rom];return !!(g&&g.direct)}
 
 function autoEditKey(){return game.rom&&cfg.games[game.rom]?game.rom:COMMON}
@@ -752,7 +760,7 @@ async function loadMame(dir,quiet){
   try{ui.mame=await call("mameInfo",d);if(ui.mame.dir&&!cfg.options.mameDir){cfg.options.mameDir=ui.mame.dir;changed()}}
   catch(e){if(!quiet)toast(e,true);ui.mame={dir:d,inis:null,error:String(e&&e.message||e)}}
   if(cfg.options.mameDir){try{ui.mk=await call("mameKeys",cfg.options.mameDir)}catch(e){ui.mk=null}}else ui.mk=null;
-  renderMame();renderSetup();
+  renderMame();renderSetup();renderPlugGuide();
   if($("#keyFold").open)renderKeys();
 }
 async function pickMameDir(){
@@ -808,6 +816,7 @@ function renderMame(){
     ${m.runningDir&&m.runningDir!==cfg.options.mameDir?`<p class="hint">起動中のMAMEUI：<span class="mono">${esc(m.runningDir)}</span> <button class="sbtn" id="useRunning">このフォルダを使う</button></p>`:""}
     <div class="row"><label style="width:auto" for="outMode">MAMEへの送り方</label><select id="outMode"><option value="key" ${cfg.options.output!=="plugin"?"selected":""}>キー送信（PCの時計で連射）</option><option value="plugin" ${cfg.options.output==="plugin"?"selected":""}>プラグイン（MAMEのフレームに合わせて連射）</option></select></div>
     <p class="hint">${cfg.options.output==="plugin"?"MAMEUIにこのソフトのプラグイン（plugins\\shotpanel）を入れて、MAMEUIの中で1フレームずつ押し離しします。PCが重くなったり、ゲームの画面の回数が1秒60回ちょうどでなかったりしても、連射がずれません。MAMEの操作（一時停止・リセットなど）だけはキーで送ります。切り替えたら、MAMEUIを閉じて「このソフト用にする」を押してください。":"これまでどおり、キーボードのキーとして送ります。PCが重いときやゲームによっては、30・20連射がずれて抜けることがあります。そのときは「プラグイン」を試してください。"}</p>
+    ${cfg.options.output==="plugin"?`<div class="row"><button class="sbtn" id="openGuide">プラグインの設定ガイドを開く</button><span class="hint">MAMEUI側の確かめ方も、1つずつ案内します</span></div>`:""}
     ${m.plugin&&cfg.options.output==="plugin"?`<div class="ini"><span class="p">${esc(m.plugin.dir)}　<span class="hint">プラグイン</span></span><span class="${m.plugin.ready?"ok":"ng"}">${m.plugin.ready?"✓ 入っています":"まだ入っていません"}</span>${m.plugin.running?`<span class="ok">動いているゲーム：<b class="mono">${esc(m.plugin.running)}</b></span>`:""}</div>`:""}
     ${status}
     <div class="inis">${(m.inis||[]).map(ini).join("")}</div>
@@ -820,11 +829,124 @@ function renderMame(){
   $("#mamePick").onclick=pickMameDir;
   const ur=$("#useRunning");if(ur)ur.onclick=()=>{cfg.options.mameDir=m.runningDir;changed();loadMame(m.runningDir)};
   const sb=$("#mameSetup");if(sb)sb.onclick=doSetup;
-  const om=$("#outMode");if(om)om.onchange=()=>{cfg.options.output=om.value;changed();renderMame();renderSetup()};
+  const om=$("#outMode");if(om)om.onchange=()=>{cfg.options.output=om.value;changed();renderMame();renderSetup();if(om.value==="plugin")openPlugGuide()};
+  const og=$("#openGuide");if(og)og.onclick=openPlugGuide;
   const kp=$("#kbdProv");if(kp)kp.onchange=()=>{cfg.options.kbdProvider=kp.value;changed();renderMame();renderSetup()};
   const ub=$("#mameUndo");if(ub)ub.onclick=()=>{if(ub.dataset.c!=="1"){ub.dataset.c="1";ub.textContent="もう一度押すと元に戻す";return}
     call("mameUndo",{Dir:cfg.options.mameDir}).then(()=>{toast("元に戻しました");loadMame()}).catch(e=>toast(e,true))};
 }
+
+/* ---------- プラグインの設定ガイド ---------- */
+// 自動で分かる手順（MAMEUIが閉じているか・プラグインが入っているか・ゲームで読み込まれたか・つながったか）は自動で ✓、
+// 自動で分からない手順（MAMEUIのLUAタブ・連射が速く出たか）は「やった」を押してもらう。
+const PG={hidden:false,open:false,help:{},sig:"",tried:false,gameAt:0,gameRom:""};
+function pgDone(){cfg.options.plugGuide=cfg.options.plugGuide||{};return cfg.options.plugGuide}
+function speedTxt(){
+  if(!link.fps)return"速さを測っています…（2秒ほど）";
+  let s=`${link.fps.toFixed(1)} フレーム/秒`;
+  if(link.hz>0)s+=`（このゲームの本来の速さ ${link.hz.toFixed(2)} の <b>${Math.round(link.fps/link.hz*100)}%</b>）`;
+  return s;
+}
+function plugSteps(){
+  const m=ui.mame||{},pi=m.plugin||{},g=pgDone();
+  const installed=!!pi.ready&&mameState()==="ready";
+  const appOpen=!!m.appOpen||!!game.rom;
+  if(game.rom!==PG.gameRom){PG.gameRom=game.rom;PG.gameAt=Date.now()}
+  const waited=Date.now()-PG.gameAt>4000; // 起動してすぐは、まだ読み込み中かもしれない
+  // 一度つながったら、LUAタブの確認も済んだことにする
+  if(link.loaded&&!g.lua){g.lua=true;changed()}
+  if(link.linked&&!g.linked){g.linked=true;g.lua=true;changed()}
+  const pdir=esc(pi.dir||"（MAMEUIのフォルダ）\\plugins\\shotpanel");
+  const runDiff=m.runningDir&&cfg.options.mameDir&&m.runningDir.toLowerCase()!==cfg.options.mameDir.toLowerCase();
+  const ui_=t=>`<b class="ui">${t}</b>`;
+  return [
+    {k:"close",t:"MAMEUIを閉じる",s:"プラグインを入れる間は、MAMEUIを閉じておきます",done:installed||!appOpen,
+     body:`<p>MAMEUIのウィンドウを右上の × で閉じてください。ゲームを遊んでいるときは、先にゲームを終わらせて（${ui_("Esc")}）、MAMEUI本体も閉じます。</p>
+       <p class="hint">MAMEUIは閉じるときに設定を書き戻すので、開いたままだと、このソフトが書いた設定が消えてしまいます。閉じると自動で ✓ が付きます。</p>
+       <p>${appOpen?`<span class="ng">いま MAMEUI が開いています</span>`:`<span class="ok">MAMEUIは閉じています</span>`}</p>`},
+    {k:"install",t:"プラグインを入れる",s:pdir,done:installed,
+     body:`<p>下のボタンを押すと、次のことを自動でします。</p>
+       <ol><li>MAMEUIの plugins フォルダに shotpanel フォルダを作り、プラグインを入れる（${pdir}）</li>
+       <li>plugins フォルダに boot.lua が無ければ入れる（これが無いとプラグインが1つも動きません）</li>
+       <li>MAMEUIの ini フォルダの plugin.ini に「shotpanel 1」と書いて、有効にする</li>
+       <li>mame.ini と入力の割り当てを、このソフト用にする（まだのとき）</li></ol>
+       <div class="row"><button class="sbtn pri" data-pg="install" ${appOpen?"disabled":""}>プラグインを入れる</button>${appOpen?`<span class="hint ng">先に MAMEUI を閉じてください</span>`:""}</div>
+       ${PG.tried&&!installed?`<div class="pghelp"><p class="ng">まだ済んでいないところがあります：</p><ul>${mameReasons().map(x=>`<li>${x}</li>`).join("")}</ul></div>`:""}`},
+    {k:"lua",t:"MAMEUIで有効になっているか見る",s:"MAMEUIの画面で、shotpanel が有効になっているかを確かめます（最初の1回だけ）",done:!!g.lua,manual:true,
+     body:`<ol><li>MAMEUIを起動します（ゲームはまだ起動しません）。</li>
+       <li>上のメニューの ${ui_("Options")} を押して、${ui_("Default System Options...")} を選びます。</li>
+       <li>開いた画面の上に並んでいるタブから ${ui_("LUA")} を選びます（タブが1列に入りきらないときは、右端の ◀ ▶ で送ります）。</li>
+       <li>${ui_("Enable internal LUA plugins")} にチェックが入っているか見ます。入っていなければ、押して入れます。</li>
+       <li>その下の ${ui_("Enabled plugins")} の欄に <b>shotpanel</b> があるか見ます。無いときは、欄の下の選択ボックスで shotpanel を選ぶと足されます。</li>
+       <li>${ui_("OK")} を押して閉じます。</li></ol>
+       <p class="hint">次の手順でゲームを起動して、プラグインが読み込まれたのが分かれば、ここも自動で ✓ になります。</p>
+       <div class="row"><button class="sbtn pri" data-pg="luaok">確かめた（shotpanel があった）</button><button class="sbtn" data-pg="help:lua">shotpanel が見つからない</button></div>
+       ${PG.help.lua?`<div class="pghelp"><ul>
+       <li>選択ボックスにも shotpanel が無いときは、プラグインが入っていません。MAMEUIを閉じて、2番の「プラグインを入れる」をもう一度押してください。入れる場所は ${pdir} です。</li>
+       <li>MAMEUIの ${ui_("Options")} → ${ui_("Directories...")} で plugins の場所を変えている場合は、上の場所と同じか確かめてください。</li>
+       <li>${ui_("Enabled plugins")} の欄に直接 shotpanel と書き足してもかまいません（ほかのプラグインとはカンマ「,」で区切ります）。</li>
+       <li>${ui_("Enable internal LUA plugins")} が押せない・すぐ外れるときは、MAMEUIを閉じてから、このソフトの「プラグインを入れる」を押し直してください。</li></ul></div>`:""}`},
+    {k:"game",t:"MAMEUIでゲームを起動する",s:"どのゲームでもかまいません。起動すると、プラグインが読み込まれたか自動で分かります",
+     done:game.rom?!!link.loaded:!!g.linked,ng:!!game.rom&&!link.loaded&&waited,
+     body:!game.rom?`<p>MAMEUIでゲームを起動してください。<span class="hint">（ゲームの起動を待っています…）</span></p>`
+       :link.loaded?`<p class="ok">「${esc(game.rom)}」でプラグインが読み込まれました。</p>`
+       :!waited?`<p>「${esc(game.rom)}」を確かめています…</p>`
+       :`<p class="ng">「${esc(game.rom)}」でプラグインが読み込まれていません。</p><div class="pghelp"><ul>
+       <li>3番の LUA タブをもう一度確かめてください（${ui_("Enable internal LUA plugins")} のチェックと、${ui_("Enabled plugins")} の shotpanel）。</li>
+       <li>このゲームだけ外していないか：MAMEUIのゲームの一覧でゲームを右クリック → ${ui_("Properties")} → ${ui_("LUA")} タブの ${ui_("Enabled plugins")} に shotpanel があるか見ます。</li>
+       ${runDiff?`<li class="ng">このソフトに設定したフォルダ（${esc(cfg.options.mameDir)}）と、起動中のMAMEUIのフォルダ（${esc(m.runningDir)}）が違います。「MAMEUIの設定」で「このフォルダを使う」を押し、2番からやり直してください。</li>`:""}
+       <li>それでもだめなときは、ゲームを終わらせて MAMEUI も閉じ、2番の「プラグインを入れる」からやり直してください。</li></ul></div>`},
+    {k:"link",t:"このソフトとつながっているか",s:"プラグインが、このソフトからの入力を受け取っているかを自動で確かめます",
+     done:game.rom?!!link.linked:!!g.linked,ng:!!game.rom&&!!link.loaded&&!link.linked&&waited,
+     body:!game.rom?`<p>ゲームを起動すると確かめます。</p>`
+       :link.linked?`<p class="ok">つながっています。</p><p>MAMEの速さ：${speedTxt()}</p><p class="hint">100% より低いときは、PCの処理が追いついていません（MAMEが遅くなっています）。</p>`
+       :`<p class="ng">プラグインは動いていますが、このソフトからの入力が届いていません。</p><div class="pghelp"><ul>
+       <li>このソフトが「一時停止中」になっていないか（上の帯）。</li>
+       <li>「全体の設定」で「MAMEが前面のときだけ送る」にしているときは、MAMEのウィンドウを前に出してください。</li>
+       ${runDiff?`<li class="ng">このソフトに設定したフォルダ（${esc(cfg.options.mameDir)}）と、起動中のMAMEUIのフォルダ（${esc(m.runningDir)}）が違います。</li>`:""}
+       <li>ゲーム中に ${ui_("Tab")} → ${ui_("Plugin Options")} → ${ui_("ShotPanel")} を開くと、${ui_("Link to ShotPanel")} が OK か waiting かが見られます。</li></ul></div>`},
+    {k:"fire",t:"連射を試す",s:"連射にしたボタンを押して、弾が速く出るか見ます",done:!!g.fire,manual:true,
+     body:`<p>ゲームで、連射にしたボタンを押し続けてください。上の「送っている入力」に <span class="mono">P1_BUTTON1(1/1)</span> のように出ていれば、プラグインに連射を渡しています（かっこの中は 押す/離す フレーム数）。</p>
+       ${link.linked?`<p>MAMEの速さ：${speedTxt()}</p>`:""}
+       <div class="row"><button class="sbtn pri" data-pg="fireok">弾が速く出た</button><button class="sbtn" data-pg="help:fire">出ない・遅い</button></div>
+       ${PG.help.fire?`<div class="pghelp"><ul>
+       <li>ボタンの設定が「連射」になっているか、下のコントローラーの図でボタンを押して確かめてください。</li>
+       <li>「送っている入力」に何も出ないときは、ボタンの割り当てか、コントローラーの 1P／2P を確かめてください。</li>
+       <li>MAMEの速さが 100% より低いときは、PCの処理が追いついていません。プラグインはフレームごとに押し離しするので抜けはしませんが、1秒あたりの回数はそのぶん減ります。</li>
+       <li>敵が多い場面だけ効かないときは、ゲーム自体の処理落ちです。ゲームがボタンを2フレームに1回しか見なくなるので、30連射は本物の基板でも効きません。20 や 15 に下げてください。</li></ul></div>`:""}`}];
+}
+function plugGuideComplete(){
+  const m=ui.mame||{},pi=m.plugin||{},g=pgDone();
+  return !!pi.ready&&mameState()==="ready"&&!!g.lua&&!!g.linked&&!!g.fire;
+}
+function openPlugGuide(){PG.hidden=false;PG.open=true;PG.sig="";renderPlugGuide();const el=$("#plugGuide");if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}
+function renderPlugGuide(){
+  const el=$("#plugGuide");if(!el)return;
+  if(!cfg||cfg.options.output!=="plugin"||PG.hidden||(!PG.open&&plugGuideComplete())||!ui.mame){if(el.innerHTML)el.innerHTML="";PG.sig="";return}
+  const steps=plugSteps(),cur=steps.findIndex(x=>!x.done),all=cur<0;
+  if(!all)PG.open=true; // 一度出したら、終わっても「閉じる」を押すまで出しておく
+  const sig=JSON.stringify([steps.map(x=>[x.done,x.ng,x.body]),cur,PG.help]);
+  if(sig===PG.sig)return; // 変わっていなければ作り直さない（ボタンが押しやすいように）
+  PG.sig=sig;
+  el.innerHTML=`<div class="setup"><div class="row" style="justify-content:space-between"><h2>プラグインの設定ガイド</h2><span><button class="sbtn" data-pg="reset">最初からやり直す</button> <button class="sbtn" data-pg="hide">閉じる</button></span></div>
+    <p class="hint">MAMEへの送り方が「プラグイン」のときの準備です。上から順に進めてください。自動で分かるところは自動で ✓ が付きます。</p>
+    ${steps.map((x,i)=>`<div class="step ${x.done?"done":x.ng?"ng":i===cur?"cur":""}"><span class="n">${x.done?"✓":x.ng?"!":i+1}</span><span class="t">${x.t}<small>${x.s}</small></span><span>${x.done&&x.manual?`<button class="sbtn" data-pg="undo:${x.k}">やり直す</button>`:""}</span>
+      ${i===cur||(x.ng&&!x.done)?`<div class="pgbody">${x.body}</div>`:""}</div>`).join("")}
+    ${all?`<p class="ok">プラグインの準備は終わりました。これで、連射はMAMEのフレームに合わせて押し離しされます。</p>`:""}</div>`;
+  el.querySelectorAll("[data-pg]").forEach(b=>b.onclick=async()=>{
+    const a=b.dataset.pg,g=pgDone();
+    if(a==="install"){PG.tried=true;await doSetup();PG.sig="";renderPlugGuide();return}
+    if(a==="luaok")g.lua=true;
+    else if(a==="fireok")g.fire=true;
+    else if(a.startsWith("help:")){const k=a.slice(5);PG.help[k]=!PG.help[k]}
+    else if(a.startsWith("undo:")){const k=a.slice(5);delete g[k]}
+    else if(a==="reset"){cfg.options.plugGuide={};PG.help={};PG.tried=false}
+    else if(a==="hide"){PG.hidden=true;PG.open=false;toast("「MAMEUIの設定」の「プラグインの設定ガイドを開く」から、また開けます")}
+    changed();PG.sig="";renderPlugGuide();
+  });
+}
+// ガイドを開いている間は、MAMEUIが開いているか・プラグインが入ったかを2秒ごとに見直す
+setInterval(()=>{if($("#plugGuide").innerHTML&&cfg&&cfg.options.mameDir&&!document.hidden&&!(document.activeElement&&document.activeElement.closest("#mameBox")))loadMame(undefined,true)},2000);
 
 /* ---------- はじめにやること ---------- */
 let setupHidden=false;try{setupHidden=localStorage.getItem("setupHidden")==="1"}catch(e){}
@@ -934,7 +1056,7 @@ $("#hideBtn").onclick=()=>call("hide");
 
 function renderAll(){
   if(!cfg)return;
-  renderStatus();renderSetup();renderEditBar();renderPads();
+  renderStatus();renderSetup();renderPlugGuide();renderEditBar();renderPads();
   if($("#optFold").open)renderOpts();
   renderMash();
 }
@@ -943,7 +1065,7 @@ $("#optFold").ontoggle=e=>{if(e.target.open)renderOpts()};
 /* ---------- 本体からの通知 ---------- */
 let lastRom=null,lastDevKeys="";
 window.onState=st=>{
-  devs=st.devices||[];active=st.active;paused=st.paused;sentKeys=st.sent||[];usePlug=!!st.plugin;plugRun=st.plugRun||"";
+  devs=st.devices||[];active=st.active;paused=st.paused;sentKeys=st.sent||[];usePlug=!!st.plugin;plugRun=st.plugRun||"";link=st.link||{};
   const g=st.game||{rom:""};
   const romChanged=g.rom!==lastRom;game=g;
   if(st.config&&!pending){
@@ -961,7 +1083,7 @@ window.onState=st=>{
   if(!$("#mashBox").hidden){const vd=devs.find(x=>x.key===(mash.target||view));if(vd)mashSample(vd)}
   if(romChanged){lastRom=g.rom;if(!editManual)ui.sel=null;editManual=false}
   if(st.active!==ui.lastActive){ui.lastActive=st.active;renderSetup()}
-  if(st.config||romChanged||dk!==lastDevKeys){lastDevKeys=dk;renderAll()}else renderStatus();
+  if(st.config||romChanged||dk!==lastDevKeys){lastDevKeys=dk;renderAll()}else{renderStatus();renderPlugGuide()}
 };
 window.addEventListener("load",()=>call("init").then(r=>{keyNames=r.keyNames||[];autostart=r.autostart;if(r.version)$("#ver").textContent="　v"+r.version}).catch(e=>toast(e,true)));
 document.addEventListener("contextmenu",e=>{if(!e.target.closest("input,textarea"))e.preventDefault()});

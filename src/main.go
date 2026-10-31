@@ -23,7 +23,7 @@ import (
 var indexHTML string
 
 const appName = "連射パネル設定"
-const appVersion = "0.11.0"
+const appVersion = "0.11.1"
 
 type gameInfo struct {
 	Rom   string           `json:"rom"`
@@ -55,6 +55,8 @@ type App struct {
 	plugSent []string                    // プラグインに渡している入力（画面の表示用）
 	usePlug  bool
 	plugRun  string // プラグインが動いているゲームの ROM 名（running.txt）
+	link     plugLink
+	ackBase  ackBase
 	st       stateWriter
 }
 
@@ -336,16 +338,23 @@ func (a *App) detectMame() {
 	usePlug := a.usePlug
 	a.mu.Unlock()
 	run := ""
+	link := plugLink{}
 	if usePlug && g.Rom != "" {
 		a.cfg.Lock()
 		dir := a.cfg.Options.MameDir
 		a.cfg.Unlock()
-		if b, err := os.ReadFile(filepath.Join(a.plugDir(dir), "running.txt")); err == nil {
+		pd := a.plugDir(dir)
+		if b, err := os.ReadFile(filepath.Join(pd, "running.txt")); err == nil {
 			run = strings.TrimSpace(string(b))
 		}
+		link = a.readAck(pd, g.Rom)
+		link.Loaded = run == g.Rom
+	} else {
+		a.ackBase = ackBase{}
 	}
 	a.mu.Lock()
 	a.plugRun = run
+	a.link = link
 	a.mu.Unlock()
 	if changed {
 		tip := appName
@@ -369,7 +378,7 @@ func (a *App) push(devs []win.DevState, withConfig bool) {
 	}
 	sort.Strings(sent)
 	sent = append(append([]string{}, a.plugSent...), sent...)
-	st := map[string]interface{}{"game": a.game, "active": a.active, "paused": a.paused, "sent": sent, "plugin": a.usePlug, "plugRun": a.plugRun}
+	st := map[string]interface{}{"game": a.game, "active": a.active, "paused": a.paused, "sent": sent, "plugin": a.usePlug, "plugRun": a.plugRun, "link": a.link}
 	a.mu.Unlock()
 	var list []devOut
 	for _, d := range devs {
@@ -479,7 +488,7 @@ func (a *App) api(cmd string, arg string) (interface{}, error) {
 		if dir == "" && running != "" {
 			dir = filepath.Dir(running)
 		}
-		res := map[string]interface{}{"dir": dir, "running": running != ""}
+		res := map[string]interface{}{"dir": dir, "running": running != "", "appOpen": win.MameAppOpen()}
 		if running != "" {
 			res["runningDir"] = filepath.Dir(running)
 		}

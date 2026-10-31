@@ -267,3 +267,31 @@ func PlugLabel(r PluginReq) string {
 	}
 	return s
 }
+
+// Ack はプラグインからの返事（ack.txt：「ROM名 受け取ったseq フレーム数 画面の回数」）。
+type Ack struct {
+	Rom    string
+	Seq    uint64
+	Frames uint64
+	Hz     float64
+}
+
+// ParseAck は ack.txt を読む。
+func ParseAck(b []byte) (Ack, bool) {
+	f := strings.Fields(string(b))
+	if len(f) < 3 {
+		return Ack{}, false
+	}
+	a := Ack{Rom: f[0]}
+	var err error
+	if a.Seq, err = strconv.ParseUint(f[1], 10, 64); err != nil {
+		return Ack{}, false
+	}
+	if a.Frames, err = strconv.ParseUint(f[2], 10, 64); err != nil {
+		return Ack{}, false
+	}
+	if len(f) >= 4 {
+		a.Hz, _ = strconv.ParseFloat(f[3], 64)
+	}
+	return a, true
+}

@@ -152,3 +152,13 @@ func TestInstallPluginKeepsExisting(t *testing.T) {
 		t.Fatalf("restore: %q", b)
 	}
 }
+
+func TestParseAck(t *testing.T) {
+	a, ok := ParseAck([]byte("raiden 12 340 57.613\n"))
+	if !ok || a.Rom != "raiden" || a.Seq != 12 || a.Frames != 340 || a.Hz != 57.613 {
+		t.Fatalf("%+v", a)
+	}
+	if _, ok := ParseAck([]byte("raiden 0")); ok {
+		t.Fatal("short")
+	}
+}

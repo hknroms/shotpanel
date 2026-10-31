@@ -59,6 +59,8 @@ type Options struct {
 	MameDir       string `json:"mameDir"`
 	KbdProvider   string `json:"kbdProvider"` // dinput（標準）/ win32
 	Output        string `json:"output"`      // MAMEへの送り方："key"（キー送信。空も同じ）/ "plugin"（MAMEのプラグインでフレームに合わせる）
+	// PlugGuide はプラグインの設定ガイドで済んだ手順（"lua"＝MAMEUIのLUAタブを確かめた、"linked"＝一度つながった、"fire"＝連射を試した）。
+	PlugGuide map[string]bool `json:"plugGuide,omitempty"`
 }
 
 // UsePlugin は MAME のプラグインで送る設定か。

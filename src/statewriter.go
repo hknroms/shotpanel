@@ -92,3 +92,54 @@ func (a *App) plugDir(mameDir string) string {
 	}
 	return core.PluginDir(mameDir)
 }
+
+// plugLink はプラグインとのつながり（画面のチュートリアルで使う）。
+type plugLink struct {
+	Loaded bool    `json:"loaded"` // 起動中のゲームでプラグインが読み込まれた（running.txt）
+	Linked bool    `json:"linked"` // プラグインが ShotPanel の state.txt を受け取っている（ack.txt）
+	Fps    float64 `json:"fps"`    // 1秒あたりのフレーム数（実際の速さ）
+	Hz     float64 `json:"hz"`     // ゲームの画面の回数（100% のときの速さ）
+}
+
+// ackBase は1秒あたりのフレーム数を測るための、前に見た ack.txt。
+type ackBase struct {
+	rom    string
+	frames uint64
+	t      time.Time // ack.txt を書いた時刻（ファイルの更新時刻）
+	fps    float64
+}
+
+// readAck は ack.txt を読んで、つながりと速さを調べる（detectMame から 0.25秒ごと）。
+func (a *App) readAck(pd, rom string) plugLink {
+	p := filepath.Join(pd, "ack.txt")
+	st, err := os.Stat(p)
+	if err != nil {
+		a.ackBase = ackBase{}
+		return plugLink{}
+	}
+	b, err := os.ReadFile(p)
+	ack, ok := core.ParseAck(b)
+	if err != nil || !ok || ack.Rom != rom {
+		return plugLink{}
+	}
+	mt := st.ModTime()
+	ab := &a.ackBase
+	if ab.rom != rom || ack.Frames < ab.frames || ab.t.IsZero() {
+		*ab = ackBase{rom: rom, frames: ack.Frames, t: mt}
+	} else if d := mt.Sub(ab.t); d >= 2*time.Second {
+		ab.fps = float64(ack.Frames-ab.frames) / d.Seconds()
+		ab.frames, ab.t = ack.Frames, mt
+	}
+	a.st.mu.Lock()
+	wseq := a.st.seq
+	a.st.mu.Unlock()
+	fresh := time.Since(mt) < 3*time.Second
+	if !fresh {
+		ab.fps = 0
+	}
+	return plugLink{
+		Linked: fresh && ack.Seq > 0 && ack.Seq <= wseq && wseq-ack.Seq <= 40,
+		Fps:    ab.fps,
+		Hz:     ack.Hz,
+	}
+}
